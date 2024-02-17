@@ -257,24 +257,21 @@ public:
   VecBound GetBounds() const override {
     VecBound b(GetRows(), ifopt::BoundZero);
 
-    size_t k = 0;
-    if (_footPosVarsName == PAW_POS + "_0") {
-      k = 0;
-    } else if (_footPosVarsName == PAW_POS + "_1") {
-      k = 1;
-    } else if (_footPosVarsName == PAW_POS + "_2") {
-      k = 2;
-    } else {
-      k = 3;
+    size_t idx = 0;
+    for (size_t k = 0; k < _model.numFeet; ++k) {
+      if (_footPosVarsName == PAW_POS + "_" + std::to_string(k)) {
+        break;
+      }
+      ++idx;
     }
 
     for (size_t i = 0; i < _numSamples; ++i) {
-      b.at(i * 3 + 0) =
-          ifopt::Bounds(_model.feetMinBounds[k][0], _model.feetMaxBounds[k][0]);
-      b.at(i * 3 + 1) =
-          ifopt::Bounds(_model.feetMinBounds[k][1], _model.feetMaxBounds[k][1]);
-      b.at(i * 3 + 2) =
-          ifopt::Bounds(_model.feetMinBounds[k][2], _model.feetMaxBounds[k][2]);
+      b.at(i * 3 + 0) = ifopt::Bounds(_model.feetMinBounds[idx][0],
+                                      _model.feetMaxBounds[idx][0]);
+      b.at(i * 3 + 1) = ifopt::Bounds(_model.feetMinBounds[idx][1],
+                                      _model.feetMaxBounds[idx][1]);
+      b.at(i * 3 + 2) = ifopt::Bounds(_model.feetMinBounds[idx][2],
+                                      _model.feetMaxBounds[idx][2]);
     }
 
     return b;
