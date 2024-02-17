@@ -4,7 +4,6 @@
 
 #include "../../utils/srbd.hpp"
 #include "../variables.hpp"
-// #incldue "friction.hpp"
 
 namespace trajopt {
 class DynamicsConstraint : public ifopt::ConstraintSet {

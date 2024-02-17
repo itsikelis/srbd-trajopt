@@ -22,7 +22,9 @@ class TrajOpt {
 public:
   TrajOpt(const SingleRigidBodyDynamicsModel &model, const Terrain &terrain,
           const TrajOptArguments &args)
-      : _model(model), _terrain(terrain), _args(args) {
+      : _model(model), _terrain(terrain), _args(args) {}
+
+  void Init() {
     // Generate Phase Times std::vector
     std::vector<double>
         phaseTimes; // Phase times for "Standing At Start" Phased Trajectories
@@ -105,13 +107,14 @@ public:
         ifopt::Component::VecBound pawPosBounds(
             3 * _args.numSteps + 6 * numSwings * _args.numKnotsPerSwing,
             ifopt::NoBound);
+
         pawPosBounds.at(0) =
             ifopt::Bounds(_model.feetPoses[i][0], _model.feetPoses[i][0]);
         pawPosBounds.at(1) =
             ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
         pawPosBounds.at(2) = ifopt::Bounds(
-            terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-            terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+            _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+            _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
         auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
             PAW_POS + "_" + std::to_string(i), pawPosPhasedTimes, pawPosBounds,
@@ -121,7 +124,7 @@ public:
         _nlp.AddConstraintSet(
             std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
         _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-            pawPosVars, terrain, _args.numSteps, numSwings,
+            pawPosVars, _terrain, _args.numSteps, numSwings,
             _args.numKnotsPerSwing));
         _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
             _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -135,7 +138,7 @@ public:
         _nlp.AddVariableSet(pawForceVars);
 
         _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-            pawForceVars, terrain, _args.numSamples, _sampleTime));
+            pawForceVars, _terrain, _args.numSamples, _sampleTime));
 
         // TO-DO: We could also ignore that! This is the control! It could do
         // whatever accelerations!
@@ -200,8 +203,8 @@ public:
           pawPosBounds.at(1) =
               ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
           pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+              _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+              _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), standGait, pawPosBounds,
@@ -211,7 +214,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, _args.numSteps, numSwings,
+              pawPosVars, _terrain, _args.numSteps, numSwings,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -225,18 +228,26 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         } else {
           ifopt::Component::VecBound pawPosBounds(
               3 * numSwings + 6 * _args.numSteps * _args.numKnotsPerSwing,
               ifopt::NoBound);
-          pawPosBounds.at(0) =
-              ifopt::Bounds(_model.feetPoses[i][0], _model.feetPoses[i][0]);
-          pawPosBounds.at(1) =
-              ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
-          pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+          auto initFootPos = _args.initPos + _model.feetPoses[i];
+          pawPosBounds.at(0) = ifopt::Bounds(initFootPos[0], initFootPos[0]);
+          pawPosBounds.at(1) = ifopt::Bounds(initFootPos[1], initFootPos[1]);
+          pawPosBounds.at(2) =
+              ifopt::Bounds(_terrain.z(initFootPos[0], initFootPos[0]),
+                            _terrain.z(initFootPos[1], initFootPos[1]));
+
+          auto targetFootPos = _args.targetPos + _model.feetPoses[i];
+          pawPosBounds.at(pawPosBounds.size() - 3) =
+              ifopt::Bounds(targetFootPos[0], targetFootPos[0]);
+          pawPosBounds.at(pawPosBounds.size() - 2) =
+              ifopt::Bounds(targetFootPos[1], targetFootPos[1]);
+          pawPosBounds.at(pawPosBounds.size() - 1) =
+              ifopt::Bounds(_terrain.z(targetFootPos[0], targetFootPos[0]),
+                            _terrain.z(targetFootPos[1], targetFootPos[1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), swingGait, pawPosBounds,
@@ -246,7 +257,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, numSwings, _args.numSteps,
+              pawPosVars, _terrain, numSwings, _args.numSteps,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -259,7 +270,7 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         }
       }
     } else if (_args.gait == "trot") {
@@ -314,7 +325,7 @@ public:
       }
 
       for (size_t i = 0; i < _model.numFeet; ++i) {
-        if (i == 0 || i == 2) {
+        if (i == 0 || i == 3) {
           ifopt::Component::VecBound pawPosBounds(
               3 * _args.numSteps + 6 * numSwings * _args.numKnotsPerSwing,
               ifopt::NoBound);
@@ -323,8 +334,8 @@ public:
           pawPosBounds.at(1) =
               ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
           pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+              _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+              _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), standGait, pawPosBounds,
@@ -334,7 +345,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, _args.numSteps, numSwings,
+              pawPosVars, _terrain, _args.numSteps, numSwings,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -348,7 +359,7 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         } else {
           ifopt::Component::VecBound pawPosBounds(
               3 * numSwings + 6 * _args.numSteps * _args.numKnotsPerSwing,
@@ -358,8 +369,8 @@ public:
           pawPosBounds.at(1) =
               ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
           pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+              _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+              _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), swingGait, pawPosBounds,
@@ -369,7 +380,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, numSwings, _args.numSteps,
+              pawPosVars, _terrain, numSwings, _args.numSteps,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -382,7 +393,7 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         }
       }
     } else {
@@ -444,8 +455,8 @@ public:
           pawPosBounds.at(1) =
               ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
           pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+              _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+              _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), standGait, pawPosBounds,
@@ -455,7 +466,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, _args.numSteps, numSwings,
+              pawPosVars, _terrain, _args.numSteps, numSwings,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -469,7 +480,7 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         } else {
           ifopt::Component::VecBound pawPosBounds(
               3 * numSwings + 6 * _args.numSteps * _args.numKnotsPerSwing,
@@ -479,8 +490,8 @@ public:
           pawPosBounds.at(1) =
               ifopt::Bounds(_model.feetPoses[i][1], _model.feetPoses[i][1]);
           pawPosBounds.at(2) = ifopt::Bounds(
-              terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
-              terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
+              _terrain.z(_model.feetPoses[i][0], _model.feetPoses[i][0]),
+              _terrain.z(_model.feetPoses[i][1], _model.feetPoses[i][1]));
 
           auto pawPosVars = std::make_shared<PhasedTrajectoryVars>(
               PAW_POS + "_" + std::to_string(i), swingGait, pawPosBounds,
@@ -490,7 +501,7 @@ public:
           _nlp.AddConstraintSet(
               std::make_shared<PhasedAccelerationConstraints>(pawPosVars));
           _nlp.AddConstraintSet(std::make_shared<FootPosTerrainConstraints>(
-              pawPosVars, terrain, numSwings, _args.numSteps,
+              pawPosVars, _terrain, numSwings, _args.numSteps,
               _args.numKnotsPerSwing));
           _nlp.AddConstraintSet(std::make_shared<FootBodyPosConstraints>(
               _model, posVars, rotVars, pawPosVars, _args.numSamples,
@@ -503,7 +514,7 @@ public:
           _nlp.AddVariableSet(pawForceVars);
 
           _nlp.AddConstraintSet(std::make_shared<FrictionConeConstraints>(
-              pawForceVars, terrain, _args.numSamples, _sampleTime));
+              pawForceVars, _terrain, _args.numSamples, _sampleTime));
         }
       }
     }
@@ -555,6 +566,9 @@ public:
   }
 
   double SampleTime() { return _sampleTime; }
+  //
+  //   void StoreSamplesToCsv(const std::string& filename, bool absolute_path =
+  //   false) {}
 
 protected:
   std::vector<double> GaitSequencer(const std::vector<double> &phaseTimes,
@@ -621,7 +635,7 @@ protected:
           ifopt::Bounds(_args.targetVel[1], _args.targetVel[1]);
       bounds.at(6 * _args.numKnots - 1) =
           ifopt::Bounds(_args.targetVel[2], _args.targetVel[2]);
-    } else if (varSet == "trot") {
+    } else if (varSet == "rot") {
       bounds.at(0) = ifopt::Bounds(_args.initRot[0], _args.initRot[0]);
       bounds.at(1) = ifopt::Bounds(_args.initRot[1], _args.initRot[1]);
       bounds.at(2) = ifopt::Bounds(_args.initRot[2], _args.initRot[2]);
