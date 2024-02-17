@@ -106,7 +106,7 @@ int main() {
   // Solve the TO Problem.
   to.Solve();
 
-  to.StoreSamplesToCsv("output.csv");
+  to.StoreSamplesToCsv("quad_trot_step.csv");
 
   return 0;
 }

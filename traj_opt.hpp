@@ -564,10 +564,11 @@ public:
 
   double SampleTime() { return _sampleTime; }
 
+  // Store results in a CSV for plotting.
   void StoreSamplesToCsv(const std::string &filename,
                          bool absolute_path = false) {
-    // Store results in a CSV for plotting.
-    // std::cout << "Writing output to CSV File" << std::endl;
+
+    std::cout << "Writing output to CSV File" << std::endl;
     std::string path;
     if (absolute_path) {
       path = filename;

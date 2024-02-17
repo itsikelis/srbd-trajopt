@@ -171,6 +171,7 @@ public:
       }
       standing = !standing;
     }
+    b.back() = ifopt::BoundZero;
 
     return b;
   }
