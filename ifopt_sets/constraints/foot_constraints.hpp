@@ -136,7 +136,6 @@ public:
     // std::cout << GetName() << " num of steps: " << _numSteps << std::endl;
     // std::cout << GetName() << " num of swings: " << _numSwings << std::endl;
     // std::cout << "##############" << std::endl;
-
     for (size_t i = 0; i < _numPhases; ++i) {
       if (standing) {
         g(cIdx++) =
@@ -188,6 +187,10 @@ public:
       size_t rowIdx = 0;
       size_t colIdx = 0;
 
+      // We should also compute the gradient of the terrain function w.r.t. the
+      // foot's x and y positions here, however, since the use cases tested are
+      // tested only on a step terrain (discontinuous), we set the gradient
+      // zero.
       for (size_t i = 0; i < _numPhases; ++i) {
         if (standing) {
           jac_block.coeffRef(rowIdx++, colIdx + 2) = 1.;
@@ -254,22 +257,24 @@ public:
   VecBound GetBounds() const override {
     VecBound b(GetRows(), ifopt::BoundZero);
 
-    Eigen::Vector3d offset = Eigen::Vector3d::Zero();
-
+    size_t k = 0;
     if (_footPosVarsName == PAW_POS + "_0") {
-      offset = _model.feetPoses[0];
+      k = 0;
     } else if (_footPosVarsName == PAW_POS + "_1") {
-      offset = _model.feetPoses[1];
+      k = 1;
     } else if (_footPosVarsName == PAW_POS + "_2") {
-      offset = _model.feetPoses[2];
+      k = 2;
     } else {
-      offset = _model.feetPoses[3];
+      k = 3;
     }
 
     for (size_t i = 0; i < _numSamples; ++i) {
-      b.at(i * 3 + 0) = ifopt::Bounds(offset[0] - 0.2, offset[0] + 0.2);
-      b.at(i * 3 + 1) = ifopt::Bounds(offset[1] - 0.1, offset[1] + 0.1);
-      b.at(i * 3 + 2) = ifopt::Bounds(offset[2] - 0.2, offset[2] + 0.4);
+      b.at(i * 3 + 0) =
+          ifopt::Bounds(_model.feetMinBounds[k][0], _model.feetMaxBounds[k][0]);
+      b.at(i * 3 + 1) =
+          ifopt::Bounds(_model.feetMinBounds[k][1], _model.feetMaxBounds[k][1]);
+      b.at(i * 3 + 2) =
+          ifopt::Bounds(_model.feetMinBounds[k][2], _model.feetMaxBounds[k][2]);
     }
 
     return b;

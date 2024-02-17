@@ -15,6 +15,8 @@ struct SingleRigidBodyDynamicsModel {
   Eigen::Matrix3d inertia = Eigen::Matrix3d::Identity();
   unsigned int numFeet = 1;
   std::vector<Eigen::Vector3d> feetPoses;
+  std::vector<Eigen::Vector3d> feetMinBounds;
+  std::vector<Eigen::Vector3d> feetMaxBounds;
 };
 
 struct Terrain {
