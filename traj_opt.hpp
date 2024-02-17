@@ -314,8 +314,6 @@ public:
           forceBounds);
       // When not in contact, force should be 0.
       for (size_t i = 0; i < _args.numSteps; ++i) {
-        std::cout << "Index: " << i * 3 + i * 6 * _args.numKnotsPerSwing
-                  << std::endl;
         pawForceBoundsOdd.at(i * 3 + i * 6 * _args.numKnotsPerSwing + 0) =
             ifopt::BoundZero;
         pawForceBoundsOdd.at(i * 3 + i * 6 * _args.numKnotsPerSwing + 1) =
@@ -518,8 +516,7 @@ public:
         }
       }
     }
-    _nlp.PrintCurrent();
-    std::cout << "End" << std::endl;
+    // _nlp.PrintCurrent();
   }
 
   void Solve() {
@@ -532,7 +529,7 @@ public:
 
     // Solve.
     ipopt.Solve(_nlp);
-    _nlp.PrintCurrent();
+    // _nlp.PrintCurrent();
   }
 
   rspl::Trajectory3D GetBodyTrajectory(std::string name) {
@@ -566,9 +563,75 @@ public:
   }
 
   double SampleTime() { return _sampleTime; }
-  //
-  //   void StoreSamplesToCsv(const std::string& filename, bool absolute_path =
-  //   false) {}
+
+  void StoreSamplesToCsv(const std::string &filename,
+                         bool absolute_path = false) {
+    // Store results in a CSV for plotting.
+    // std::cout << "Writing output to CSV File" << std::endl;
+    std::string path;
+    if (absolute_path) {
+      path = filename;
+    } else {
+      path = std::string(SRCPATH) + "/" + filename;
+    }
+
+    std::ofstream csv(path);
+
+    if (!csv.is_open()) {
+      std::cerr << "Error opening the CSV file!" << std::endl;
+    }
+
+    csv << "index,time,x_b,y_b,z_b,th_z,th_y,th_x";
+
+    for (size_t k = 0; k < _model.numFeet; ++k) {
+      csv << ","
+          << "x" << std::to_string(k) << ","
+          << "y" << std::to_string(k) << ","
+          << "z" << std::to_string(k) << ","
+          << "fx" << std::to_string(k) << ","
+          << "fy" << std::to_string(k) << ","
+          << "fz" << std::to_string(k);
+    }
+
+    csv << std::endl;
+
+    double t = 0.;
+    for (size_t i = 1; i < _args.numSamples; ++i) {
+
+      csv << i << "," << t;
+
+      // Body Positions
+      double x_b = GetBodyTrajectory("pos").position(t)(0);
+      double y_b = GetBodyTrajectory("pos").position(t)(1);
+      double z_b = GetBodyTrajectory("pos").position(t)(2);
+
+      double th_z = GetBodyTrajectory("rot").position(t)(0);
+      double th_y = GetBodyTrajectory("rot").position(t)(1);
+      double th_x = GetBodyTrajectory("rot").position(t)(2);
+
+      csv << "," << x_b << "," << y_b << "," << z_b << "," << th_z << ","
+          << th_y << "," << th_x;
+
+      for (size_t k = 0; k < _model.numFeet; ++k) {
+        double x = GetFootPosTrajectory(k).position(t)(0);
+        double y = GetFootPosTrajectory(k).position(t)(1);
+        double z = GetFootPosTrajectory(k).position(t)(2);
+
+        double fx = GetFootForceTrajectory(k).position(t)(0);
+        double fy = GetFootForceTrajectory(k).position(t)(1);
+        double fz = GetFootForceTrajectory(k).position(t)(2);
+
+        csv << "," << x << "," << y << "," << z << "," << fx << "," << fy << ","
+            << fz;
+      }
+      csv << std::endl;
+      t += _sampleTime;
+    }
+
+    // Close the CSV file
+    csv.close();
+    std::cout << "CSV file created successfully!" << std::endl;
+  }
 
 protected:
   std::vector<double> GaitSequencer(const std::vector<double> &phaseTimes,

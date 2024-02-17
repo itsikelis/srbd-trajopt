@@ -106,72 +106,7 @@ int main() {
   // Solve the TO Problem.
   to.Solve();
 
-  // Retrieve the generated trajectories.
-  // GetBodyPosTrajectory()
-  // auto posTrajectory = to.GetBodyTrajectory("pos");
-  // GetBodyRotTrajectory()
-  // GetFootPosTrajectory(footIdx)
-  // GetFootForceTrajectory(footIdx)
-
-  // Store results in a CSV for plotting.
-  // std::cout << "Writing output to CSV File" << std::endl;
-  std::ofstream csv("output.csv");
-
-  if (!csv.is_open()) {
-    std::cerr << "Error opening the CSV file!" << std::endl;
-    return 1;
-  }
-
-  csv << "index,time,x_b,y_b,z_b,th_z, th_y, th_x";
-
-  for (size_t k = 0; k < model.numFeet; ++k) {
-    csv << ","
-        << "x" << std::to_string(k) << ","
-        << "y" << std::to_string(k) << ","
-        << "z" << std::to_string(k) << ","
-        << "fx" << std::to_string(k) << ","
-        << "fy" << std::to_string(k) << ","
-        << "fz" << std::to_string(k);
-  }
-
-  csv << std::endl;
-
-  double t = 0.;
-  for (size_t i = 1; i < args.numSamples; ++i) {
-
-    csv << i << "," << t;
-
-    // Body Positions
-    double x_b = to.GetBodyTrajectory("pos").position(t)(0);
-    double y_b = to.GetBodyTrajectory("pos").position(t)(1);
-    double z_b = to.GetBodyTrajectory("pos").position(t)(2);
-
-    double th_z = to.GetBodyTrajectory("rot").position(t)(0);
-    double th_y = to.GetBodyTrajectory("rot").position(t)(1);
-    double th_x = to.GetBodyTrajectory("rot").position(t)(2);
-
-    csv << "," << x_b << "," << y_b << "," << z_b << "," << th_z << "," << th_y
-        << "," << th_x;
-
-    for (size_t k = 0; k < model.numFeet; ++k) {
-      double x = to.GetFootPosTrajectory(k).position(t)(0);
-      double y = to.GetFootPosTrajectory(k).position(t)(1);
-      double z = to.GetFootPosTrajectory(k).position(t)(2);
-
-      double fx = to.GetFootForceTrajectory(k).position(t)(0);
-      double fy = to.GetFootForceTrajectory(k).position(t)(1);
-      double fz = to.GetFootForceTrajectory(k).position(t)(2);
-
-      csv << "," << x << "," << y << "," << z << "," << fx << "," << fy << ","
-          << fz;
-    }
-    csv << std::endl;
-    t += to.SampleTime();
-  }
-
-  // Close the CSV file
-  csv.close();
-  std::cout << "CSV file created successfully!" << std::endl;
+  to.StoreSamplesToCsv("output.csv");
 
   return 0;
 }
