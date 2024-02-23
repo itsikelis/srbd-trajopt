@@ -14,22 +14,43 @@ inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz,
 int main() {
   std::srand(std::time(0));
 
-  Eigen::Matrix3d inertia = InertiaTensor(0.88201174, 1.85452968, 1.97309185,
-                                          0.00137526, 0.00062895, 0.00018922);
-  const double anymalMass = 30.4213964625;
-  const double x_nominal_b = 0.34;
-  const double y_nominal_b = 0.19;
+  // Create an SRBD Model
+  double W = 0.4;
+  double D = 0.4;
+  double H = 0.1;
+  double m_b = 20;
+  // Inertia Matrix (https://en.wikipedia.org/wiki/List_of_moments_of_inertia)
+  Eigen::DiagonalMatrix<double, 3, 3> inertia(
+      (1. / 12.) * m_b * (H * H + W * W), (1. / 12.) * m_b * (D * D + H * H),
+      (1. / 12.) * m_b * (W * W + D * D));
+
+  const double x_nominal_b = 0.1;
+  const double y_nominal_b = 0.1;
   const double z_nominal_b = -0.42;
 
-  const double dx = 0.15;
-  const double dy = 0.1;
-  const double dz = 0.1;
+  const double dx = 0.25;
+  const double dy = 0.2;
+  const double dz = 0.2;
+
+  // Anymal characteristics
+  //   Eigen::Matrix3d inertia =
+  //   InertiaTensor(0.88201174, 1.85452968, 1.97309185,
+  //                                           0.00137526, 0.00062895,
+  //                                           0.00018922);
+  //   const double m_b = 30.4213964625;
+  //   const double x_nominal_b = 0.34;
+  //   const double y_nominal_b = 0.19;
+  //   const double z_nominal_b = -0.42;
+
+  //   const double dx = 0.15;
+  //   const double dy = 0.1;
+  //   const double dz = 0.1;
 
   trajopt::SingleRigidBodyDynamicsModel model;
 
-  model.mass = anymalMass;
+  model.mass = m_b;
   model.inertia = inertia;
-  model.numFeet = 4;
+  model.numFeet = 2;
 
   std::vector<Eigen::Vector3d> feet_positions;
 
@@ -47,39 +68,23 @@ int main() {
   model.feetMaxBounds.push_back(
       Eigen::Vector3d(x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
 
-  // Right hind
-  model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, -y_nominal_b, 0.));
-  model.feetMinBounds.push_back(
-      Eigen::Vector3d(-x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
-  model.feetMaxBounds.push_back(
-      Eigen::Vector3d(-x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
+  //   // Right hind
+  //   model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, -y_nominal_b,
+  //   0.)); model.feetMinBounds.push_back(
+  //       Eigen::Vector3d(-x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b -
+  //       dz));
+  //   model.feetMaxBounds.push_back(
+  //       Eigen::Vector3d(-x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b +
+  //       dz));
 
-  // Left hind
-  model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, y_nominal_b, 0.));
-  model.feetMinBounds.push_back(
-      Eigen::Vector3d(-x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
-  model.feetMaxBounds.push_back(
-      Eigen::Vector3d(-x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
-
-  // Create an SRBD Model(numFeet, mass, gravity, inertia)
-  // double W = 0.4;
-  // double D = 0.4;
-  // double H = 0.1;
-  // double m_b = 20; // 0.5kg
-  // Inertia Matrix (https://en.wikipedia.org/wiki/List_of_moments_of_inertia)
-  // Eigen::DiagonalMatrix/ RotMat<double, 3, 3> I((1. / 12.) * m_b * (H * H + W
-  // * W), (1. / 12.) * m_b * (D * D + H * H), (1. / 12.) * m_b * (W * W + D *
-  // D));
-
-  // size_t nFeet = 4;
-
-  // std::vector<Eigen::Vector3d> fPoses;
-  // fPoses.push_back(Eigen::Vector3d(0.2, -0.2, -0.5)); // r_i right front
-  // fPoses.push_back(Eigen::Vector3d(0.2, 0.2, -0.5)); // r_i left front
-  // fPoses.push_back(Eigen::Vector3d(-0.2, -0.2, -0.5)); // r_i right hind
-  // fPoses.push_back(Eigen::Vector3d(-0.2, 0.2, -0.5)); // r_i left hind
-
-  // trajopt::SingleRigidBodyDynamicsModel model(m_b, I, nFeet, fPoses);
+  //   // Left hind
+  //   model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, y_nominal_b,
+  //   0.)); model.feetMinBounds.push_back(
+  //       Eigen::Vector3d(-x_nominal_b - dx, y_nominal_b - dy, z_nominal_b -
+  //       dz));
+  //   model.feetMaxBounds.push_back(
+  //       Eigen::Vector3d(-x_nominal_b + dx, y_nominal_b + dy, z_nominal_b +
+  //       dz));
 
   // Create a Terrain Model (Select from predefined ones)
   trajopt::Terrain terrain("step");
@@ -106,7 +111,7 @@ int main() {
   // Solve the TO Problem.
   to.Solve();
 
-  to.StoreSamplesToCsv("quad_trot_step.csv");
+  to.StoreSamplesToCsv("biped_trot_step.csv");
 
   return 0;
 }

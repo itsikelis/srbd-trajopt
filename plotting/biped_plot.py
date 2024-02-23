@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("build/output.csv")
+df = pd.read_csv("biped_trot_step.csv")
 
 
 # PLOT BODY POSITIONS
@@ -223,6 +223,6 @@ def plot_feet_forces():
     plt.show()
 
 
-plot_body_pos()
+# plot_body_pos()
 # plot_feet_pos()
-# plot_feet_forces()
+plot_feet_forces()
