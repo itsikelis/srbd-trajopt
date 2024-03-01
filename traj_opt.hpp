@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -632,6 +633,10 @@ public:
     // Close the CSV file
     csv.close();
     std::cout << "CSV file created successfully!" << std::endl;
+  }
+
+  std::shared_ptr<ifopt::Problem> nlp() {
+    return std::make_shared<ifopt::Problem>(_nlp);
   }
 
 protected:
