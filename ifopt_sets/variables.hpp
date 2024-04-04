@@ -83,6 +83,9 @@ public:
   inline Eigen::Vector3d splineEval(size_t idx, double t, size_t order) const { return _traj.spline(idx)->eval(t, order); }
   inline Jacobian splineJacobian(size_t idx, double t, size_t order ) const { return _traj.jac_block(idx, t, order); }
 
+  inline bool standingAt(double t) const { return (_traj.phase_at(t) == rspl::Phase::Stance ) ? true : false; }
+  inline size_t varStartAt(double t) const { return _traj.var_start_at(t); } 
+
 protected:
   Eigen::VectorXd _values;
   VecBound _bounds;
@@ -90,7 +93,7 @@ protected:
   std::vector<size_t> _knotsPerSwing;
   rspl::Phase _initPhase;
 
-  rspl::Trajectory<rspl::CubicHermiteSpline<3>> _traj;
+  rspl::PhasedTrajectory<rspl::CubicHermiteSpline<3>> _traj;
 };
 
 } // namespace trajopt

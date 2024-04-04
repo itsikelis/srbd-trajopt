@@ -1,30 +1,27 @@
-
 #pragma once
 
 #include <ifopt/constraint_set.h>
 
 #include "../../utils/srbd.hpp"
 #include "../variables.hpp"
+#include "../../utils/types.hpp"
 
 namespace trajopt {
 class FrictionConeConstraints : public ifopt::ConstraintSet {
 public:
-  FrictionConeConstraints(
-      const std::shared_ptr<PhasedTrajectoryVars> &forceVars,
-      const trajopt::Terrain &terrain, size_t numSamples, double sampleTime)
-      : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
+  FrictionConeConstraints(const std::shared_ptr<PhasedTrajectoryVars> &forceVars, const trajopt::Terrain &terrain, size_t numSamples, double sampleTime) 
+        : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
         _forceVarsName(forceVars->GetName()), _numSamples(numSamples),
         _sampleTime(sampleTime), _terrain(terrain) {}
 
   VectorXd GetValues() const override {
     VectorXd g = VectorXd::Zero(GetRows());
 
-    auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-        GetVariables()->GetComponent(_forceVarsName));
+    auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
     double t = 0.;
     for (size_t i = 0; i < _numSamples; ++i) {
-      Eigen::Vector3d f = forceVars->position(t);
+      Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
       double fn = f.dot(_terrain.n);
       double ft = f.dot(_terrain.t);
       double fb = f.dot(_terrain.b);
@@ -58,34 +55,25 @@ public:
   void FillJacobianBlock(std::string var_set,
                          Jacobian &jac_block) const override {
     if (var_set == _forceVarsName) {
-      auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-          GetVariables()->GetComponent(_forceVarsName));
+      auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
       double t = 0.;
       for (size_t i = 0; i < _numSamples; ++i) {
-        Jacobian fPos = forceVars->jacobianPosition(t);
+        Jacobian fPos = forceVars->trajectoryJacobian(t, 0);
 
         Jacobian mult0 = _terrain.n.transpose().sparseView(1, -1);
         Jacobian res0 = mult0 * fPos;
 
-        Jacobian mult1 = (_terrain.t - _terrain.mu * _terrain.n)
-                             .transpose()
-                             .sparseView(1, -1);
+        Jacobian mult1 = (_terrain.t - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
         Jacobian res1 = mult1 * fPos;
 
-        Jacobian mult2 = (-_terrain.t - _terrain.mu * _terrain.n)
-                             .transpose()
-                             .sparseView(1, -1);
+        Jacobian mult2 = (-_terrain.t - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
         Jacobian res2 = mult2 * fPos;
 
-        Jacobian mult3 = (_terrain.b - _terrain.mu * _terrain.n)
-                             .transpose()
-                             .sparseView(1, -1);
+        Jacobian mult3 = (_terrain.b - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
         Jacobian res3 = mult3 * fPos;
 
-        Jacobian mult4 = (-_terrain.b - _terrain.mu * _terrain.n)
-                             .transpose()
-                             .sparseView(1, -1);
+        Jacobian mult4 = (-_terrain.b - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
         Jacobian res4 = mult4 * fPos;
 
         jac_block.middleRows(i * 5 + 0, 1) += res0;
@@ -108,112 +96,72 @@ private:
 
 class FootPosTerrainConstraints : public ifopt::ConstraintSet {
 public:
-  FootPosTerrainConstraints(const std::shared_ptr<PhasedTrajectoryVars> &vars,
-                            const trajopt::Terrain &terrain, size_t numSteps,
-                            size_t numSwings, size_t numKnotsPerSwing)
-      : ConstraintSet(kSpecifyLater, vars->GetName() + "_foot_pos_terrain"),
-        _varsName(vars->GetName()), _terrain(terrain),
-        _numPhases(numSteps + numSwings), _numSteps(numSteps),
-        _numSwings(numSwings), _numKnotsPerSwing(numKnotsPerSwing) {
-    SetRows(numSteps + numSwings * numKnotsPerSwing);
-  }
+  FootPosTerrainConstraints(const std::shared_ptr<PhasedTrajectoryVars> &vars, const trajopt::Terrain &terrain, size_t numSamples, double sampleTime)
+      : ConstraintSet(numSamples, vars->GetName() + "_foot_pos_terrain"),
+        _varSetName(vars->GetName()), _terrain(terrain), _numSamples(numSamples), _sampleTime(sampleTime) 
+  {}
 
   VectorXd GetValues() const override {
     VectorXd g = VectorXd::Zero(GetRows());
-
-    auto values = std::static_pointer_cast<PhasedTrajectoryVars>(
-                      GetVariables()->GetComponent(_varsName))
-                      ->GetValues();
-
-    bool standing = std::static_pointer_cast<PhasedTrajectoryVars>(
-                        GetVariables()->GetComponent(_varsName))
-                        ->standingAtStart();
-    size_t valIdx = 0;
-    size_t cIdx = 0;
+    auto values = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varSetName))->GetValues();
 
     // std::cout << "##############" << std::endl;
     // std::cout << GetName() << " num of phases: " << _numPhases << std::endl;
     // std::cout << GetName() << " num of steps: " << _numSteps << std::endl;
     // std::cout << GetName() << " num of swings: " << _numSwings << std::endl;
     // std::cout << "##############" << std::endl;
-    for (size_t i = 0; i < _numPhases; ++i) {
-      if (standing) {
-        g(cIdx++) =
-            values[valIdx + 2] - _terrain.z(values[valIdx], values[valIdx + 1]);
-        valIdx += 3;
-      } else {
-        for (size_t k = 0; k < _numKnotsPerSwing; ++k) {
-          g(cIdx++) = values[valIdx + 2] -
-                      _terrain.z(values[valIdx], values[valIdx + 1]);
-          valIdx += 6;
-        }
-      }
-      standing = !standing;
+
+    auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varSetName));
+
+    double t = 0.;
+    for (size_t i = 0; i < _numSamples; ++i) {
+      auto footPos = vars->trajectoryEval(t, 0);
+      auto footZ = footPos[2];
+      auto terrainZ = _terrain.z(footPos[0], footPos[1]);
+      g[i] = footZ - terrainZ;
+      
+      t += _sampleTime;
     }
     return g;
   }
 
   VecBound GetBounds() const override {
     VecBound b(GetRows(), ifopt::BoundZero);
+    auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varSetName));
 
-    bool standing = std::static_pointer_cast<PhasedTrajectoryVars>(
-                        GetVariables()->GetComponent(_varsName))
-                        ->standingAtStart();
-    size_t bIdx = 0;
-
-    for (size_t i = 0; i < _numPhases; ++i) {
-      if (standing) {
-        b.at(bIdx++) = ifopt::BoundZero;
+    double t = 0.;
+    for (size_t i = 0; i < _numSamples; ++i) {
+      if(vars->standingAt(t)) {
+        b.at(i) = ifopt::BoundZero;
       } else {
-        for (size_t k = 0; k < _numKnotsPerSwing; ++k) {
-          b.at(bIdx++) = ifopt::BoundGreaterZero;
-        }
+        b.at(i) = ifopt::BoundGreaterZero;
       }
-      standing = !standing;
-    }
-    b.back() = ifopt::BoundZero;
 
+      t += _sampleTime;
+    }
     return b;
   }
 
-  void FillJacobianBlock(std::string var_set,
-                         Jacobian &jac_block) const override {
-    if (var_set == _varsName) {
-      auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(
-          GetVariables()->GetComponent(_varsName));
+  void FillJacobianBlock(std::string var_set, Jacobian &jac_block) const override {
+    if (var_set == _varSetName) {
+      auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varSetName));
+      
+      double t = 0.;
+      for (size_t i = 0; i < _numSamples; ++i) {
+        Jacobian dPosZ = vars->trajectoryJacobian(t, 0).row(2);
+        size_t varIdx = vars->varStartAt(t);
 
-      bool standing = std::static_pointer_cast<PhasedTrajectoryVars>(
-                          GetVariables()->GetComponent(_varsName))
-                          ->standingAtStart();
-      size_t rowIdx = 0;
-      size_t colIdx = 0;
-
-      // We should also compute the gradient of the terrain function w.r.t. the
-      // foot's x and y positions here, however, since the use cases tested are
-      // tested only on a step terrain (discontinuous), we set the gradient
-      // zero.
-      for (size_t i = 0; i < _numPhases; ++i) {
-        if (standing) {
-          jac_block.coeffRef(rowIdx++, colIdx + 2) = 1.;
-          colIdx += 3;
-        } else {
-          for (size_t k = 0; k < _numKnotsPerSwing; ++k) {
-            jac_block.coeffRef(rowIdx++, colIdx + 2) = 1.;
-            colIdx += 6;
-          }
-        }
-        standing = !standing;
+        jac_block.coeffRef(i, varIdx + 2) = 1.;
+        jac_block.row(i) *= dPosZ; 
       }
     }
   }
 
 private:
-  const std::string _varsName;
+  const std::string _varSetName;
   const trajopt::Terrain _terrain;
-  const size_t _numPhases;
-  const size_t _numSteps;
-  const size_t _numSwings;
-  const size_t _numKnotsPerSwing;
+  size_t _numSamples;
+  double _sampleTime;
 };
 
 class FootBodyPosConstraints : public ifopt::ConstraintSet {
@@ -224,8 +172,7 @@ public:
       const std::shared_ptr<TrajectoryVars> &bodyRotVars,
       const std::shared_ptr<PhasedTrajectoryVars> &footPosVars,
       size_t numSamples, double sampleTime)
-      : ConstraintSet(3 * numSamples,
-                      footPosVars->GetName() + "_foot_body_pos"),
+      : ConstraintSet(3 * numSamples, footPosVars->GetName() + "_foot_body_pos"),
         _model(model), _bodyPosVarsName(bodyPosVars->GetName()),
         _bodyRotVarsName(bodyRotVars->GetName()),
         _footPosVarsName(footPosVars->GetName()), _numSamples(numSamples),
@@ -234,18 +181,15 @@ public:
   VectorXd GetValues() const override {
     VectorXd g = VectorXd::Zero(GetRows());
 
-    auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(_bodyPosVarsName));
-    auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(_bodyRotVarsName));
-    auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-        GetVariables()->GetComponent(_footPosVarsName));
+    auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyPosVarsName));
+    auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyRotVarsName));
+    auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
 
     double t = 0.;
     for (size_t i = 0; i < _numSamples; ++i) {
-      Eigen::Vector3d b = bodyPosVars->position(t);
-      Jacobian R = eulerZYXToMatrix(bodyRotVars->position(t));
-      Eigen::Vector3d f = footPosVars->position(t);
+      Eigen::Vector3d b = bodyPosVars->trajectoryEval(t, 0);
+      Jacobian R = eulerZYXToMatrix(bodyRotVars->trajectoryEval(t, 0));
+      Eigen::Vector3d f = footPosVars->trajectoryEval(t, 0);
 
       g.segment(i * 3, 3) = R.transpose() * (f - b);
 
@@ -267,12 +211,9 @@ public:
     }
 
     for (size_t i = 0; i < _numSamples; ++i) {
-      b.at(i * 3 + 0) = ifopt::Bounds(_model.feetMinBounds[idx][0],
-                                      _model.feetMaxBounds[idx][0]);
-      b.at(i * 3 + 1) = ifopt::Bounds(_model.feetMinBounds[idx][1],
-                                      _model.feetMaxBounds[idx][1]);
-      b.at(i * 3 + 2) = ifopt::Bounds(_model.feetMinBounds[idx][2],
-                                      _model.feetMaxBounds[idx][2]);
+      b.at(i * 3 + 0) = ifopt::Bounds(_model.feetMinBounds[idx][0], _model.feetMaxBounds[idx][0]);
+      b.at(i * 3 + 1) = ifopt::Bounds(_model.feetMinBounds[idx][1], _model.feetMaxBounds[idx][1]);
+      b.at(i * 3 + 2) = ifopt::Bounds(_model.feetMinBounds[idx][2], _model.feetMaxBounds[idx][2]);
     }
 
     return b;
@@ -280,18 +221,15 @@ public:
 
   void FillJacobianBlock(std::string var_set,
                          Jacobian &jac_block) const override {
-    auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(_bodyPosVarsName));
-    auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(_bodyRotVarsName));
-    auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-        GetVariables()->GetComponent(_footPosVarsName));
+    auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyPosVarsName));
+    auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyRotVarsName));
+    auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
 
     if (var_set == _bodyPosVarsName) {
       double t = 0.;
       for (size_t i = 0; i < _numSamples; ++i) {
-        Jacobian R = eulerZYXToMatrix(bodyRotVars->position(t));
-        Jacobian dBodyPos = bodyPosVars->jacobianPosition(t);
+        Jacobian R = eulerZYXToMatrix(bodyRotVars->trajectoryEval(t, 0));
+        Jacobian dBodyPos = bodyPosVars->trajectoryJacobian(t, 0);
 
         jac_block.middleRows(i * 3, 3) = -R.transpose() * dBodyPos;
 
@@ -300,11 +238,11 @@ public:
     } else if (var_set == _bodyRotVarsName) {
       double t = 0.;
       for (size_t i = 0; i < _numSamples; ++i) {
-        Jacobian dBodyRot = bodyRotVars->jacobianPosition(t);
+        Jacobian dBodyRot = bodyRotVars->trajectoryJacobian(t, 0);
 
-        Eigen::Vector3d b = bodyPosVars->position(t);
-        Eigen::Vector3d euler_zyx = bodyRotVars->position(t);
-        Eigen::Vector3d f = footPosVars->position(t);
+        Eigen::Vector3d b = bodyPosVars->trajectoryEval(t, 0);
+        Eigen::Vector3d euler_zyx = bodyRotVars->trajectoryEval(t, 0);
+        Eigen::Vector3d f = footPosVars->trajectoryEval(t, 0);
 
         Jacobian mult = derivRotationTransposeVector(euler_zyx, f - b);
         Jacobian res = mult * dBodyRot;
@@ -315,8 +253,8 @@ public:
     } else if (var_set == _footPosVarsName) {
       double t = 0.;
       for (size_t i = 0; i < _numSamples; ++i) {
-        Jacobian R = eulerZYXToMatrix(bodyRotVars->position(t));
-        Jacobian dFootPos = footPosVars->jacobianPosition(t);
+        Jacobian R = eulerZYXToMatrix(bodyRotVars->trajectoryEval(t, 0));
+        Jacobian dFootPos = footPosVars->trajectoryJacobian(t, 0);
 
         jac_block.middleRows(i * 3, 3) = R.transpose() * dFootPos;
 
