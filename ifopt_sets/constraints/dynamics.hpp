@@ -2,50 +2,46 @@
 
 #include <ifopt/constraint_set.h>
 
+#include "../../utils/types.hpp"
 #include "../../utils/srbd.hpp"
 #include "../variables.hpp"
 
 namespace trajopt {
 class DynamicsConstraint : public ifopt::ConstraintSet {
 public:
-  DynamicsConstraint(const SingleRigidBodyDynamicsModel &model,
-                     unsigned int numSamplePoints, double sampleTime)
-      : ConstraintSet(6 * numSamplePoints, BODY_DYNAMICS), _model(model),
-        _numSamplePoints(numSamplePoints), _sampleTime(sampleTime) {}
+  DynamicsConstraint(const SingleRigidBodyDynamicsModel &model, size_t numSamplePoints, double sampleTime) : ConstraintSet(6 * numSamplePoints, BODY_DYNAMICS), 
+                                                                                                            _model(model),
+                                                                                                            _numSamplePoints(numSamplePoints), 
+                                                                                                            _sampleTime(sampleTime) 
+  { }
 
   VectorXd GetValues() const override {
     VectorXd g = VectorXd::Zero(GetRows());
 
-    auto positionVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-    auto rotationVars = std::static_pointer_cast<TrajectoryVars>(
-        GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+    auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
+    auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
 
     double t = 0.;
     for (unsigned int i = 0; i < _numSamplePoints; i++) {
-      Eigen::Vector3d acc = positionVars->acceleration(t);
-      Eigen::Vector3d accEuler = rotationVars->acceleration(t);
-      Eigen::Vector3d velEuler = rotationVars->velocity(t);
+      Eigen::Vector3d acc = positionVars->trajectoryEval(t, 2);
+      Eigen::Vector3d accEuler = rotationVars->trajectoryEval(t, 2);
+      Eigen::Vector3d velEuler = rotationVars->trajectoryEval(t, 1);
 
       Eigen::Vector3d f = Eigen::Vector3d::Zero();
       Eigen::Vector3d tau = Eigen::Vector3d::Zero();
       for (unsigned int k = 0; k < _model.numFeet; k++) {
-        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-            GetVariables()->GetComponent(PAW_FORCES + "_" + std::to_string(k)));
-        Eigen::Vector3d force = forceVars->position(t);
+        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(PAW_FORCES + "_" + std::to_string(k)));
+        Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-            GetVariables()->GetComponent(PAW_POS + "_" + std::to_string(k)));
-        Eigen::Vector3d bodyPos = positionVars->position(t);
-        Eigen::Vector3d pawPos = pawPosVars->position(t);
+        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(PAW_POS + "_" + std::to_string(k)));
+        Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
+        Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
         tau += (pawPos - bodyPos).cross(force);
-
-        // tau += _model.feetPoses[k].cross(force);
 
         f += force;
       }
 
-      Eigen::Vector3d eulerZYX = rotationVars->position(t);
+      Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
       Eigen::Matrix3d R = eulerZYXToMatrix(eulerZYX);
       Eigen::Matrix3d E = eulerZYXToOmega(eulerZYX);
       Eigen::Matrix3d Edot = eulerZYXToOmegaDot(eulerZYX, velEuler);
@@ -53,10 +49,7 @@ public:
       Eigen::Vector3d omegaDot = E * accEuler + Edot * velEuler;
 
       g.segment(i * 6, 3) = acc - f / _model.mass - _model.gravity;
-      g.segment(i * 6 + 3, 3) =
-          omegaDot -
-          (_model.inertia.inverse() *
-           (R.transpose() * tau - omega.cross(_model.inertia * omega)));
+      g.segment(i * 6 + 3, 3) = omegaDot - (_model.inertia.inverse() * (R.transpose() * tau - omega.cross(_model.inertia * omega)));
 
       t += _sampleTime;
     }
@@ -75,40 +68,32 @@ public:
 
   void FillJacobianBlock(std::string var_set,
                          Jacobian &jac_block) const override {
-    Jacobian inertia =
-        _model.inertia.sparseView(1., -1.); // TO-DO: Make this better
+    Jacobian inertia = _model.inertia.sparseView(1., -1.); // TO-DO: Make this better
     Jacobian inertia_inv = _model.inertia.inverse().sparseView(1., -1.);
 
     if (var_set == BODY_POS_TRAJECTORY) {
-      auto positionVars = std::static_pointer_cast<TrajectoryVars>(
-          GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-      auto rotationVars = std::static_pointer_cast<TrajectoryVars>(
-          GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+      auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
+      auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
 
       double t = 0.;
       for (size_t i = 0; i < _numSamplePoints; ++i) {
-        jac_block.middleRows(i * 6, 3) = positionVars->jacobianAcceleration(t);
+        jac_block.middleRows(i * 6, 3) = positionVars->trajectoryJacobian(t, 2);
 
-        Jacobian dPos = positionVars->jacobianPosition(t);
+        Jacobian dPos = positionVars->trajectoryJacobian(t, 0);
 
         Jacobian derivTauSum(3, 3);
         for (size_t k = 0; k < _model.numFeet; ++k) {
           std::string fVar = PAW_FORCES + "_" + std::to_string(k);
           std::string pVar = PAW_FORCES + "_" + std::to_string(k);
 
-          Eigen::Vector3d pawPos =
-              std::static_pointer_cast<PhasedTrajectoryVars>(
-                  GetVariables()->GetComponent(pVar))
-                  ->position(t);
-          Eigen::Vector3d f = std::static_pointer_cast<PhasedTrajectoryVars>(
-                                  GetVariables()->GetComponent(fVar))
-                                  ->position(t);
-          Eigen::Vector3d bodyPos = positionVars->position(t);
+          Eigen::Vector3d pawPos = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar))->trajectoryEval(t, 0);
+          Eigen::Vector3d f = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar))->trajectoryEval(t, 0);
+          Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
 
           derivTauSum -= derivSkewMultiplyVector((pawPos - bodyPos), f);
         }
 
-        Eigen::Vector3d eulerZYX = rotationVars->position(t);
+        Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
         Jacobian R = eulerZYXToMatrix(eulerZYX);
 
         Jacobian multiplier = inertia_inv * R.transpose() * derivTauSum;
@@ -118,51 +103,37 @@ public:
         t += _sampleTime;
       }
     } else if (var_set == BODY_ROT_TRAJECTORY) {
-      auto positionVars = std::static_pointer_cast<TrajectoryVars>(
-          GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-      auto rotationVars = std::static_pointer_cast<TrajectoryVars>(
-          GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+      auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
+      auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
       double t = 0.;
       for (unsigned int i = 0; i < _numSamplePoints; i++) {
-        Jacobian dAcc = rotationVars->jacobianAcceleration(t);
-        Jacobian dVel = rotationVars->jacobianVelocity(t);
-        Jacobian dPos = rotationVars->jacobianPosition(t);
-        Eigen::Vector3d eulerZYX = rotationVars->position(t);
-        Eigen::Vector3d velEuler = rotationVars->velocity(t);
-        Eigen::Vector3d accEuler = rotationVars->acceleration(t);
+        Jacobian dAcc = rotationVars->trajectoryJacobian(t, 2);
+        Jacobian dVel = rotationVars->trajectoryJacobian(t, 1);
+        Jacobian dPos = rotationVars->trajectoryJacobian(t, 0);
+        Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
+        Eigen::Vector3d velEuler = rotationVars->trajectoryEval(t, 1);
+        Eigen::Vector3d accEuler = rotationVars->trajectoryEval(t, 2);
 
         Jacobian E = eulerZYXToOmega(eulerZYX);
         Jacobian Edot = eulerZYXToOmegaDot(eulerZYX, velEuler);
 
         // TO-DO: Optimize ALL this
-        jac_block.middleRows(i * 6 + 3, 3) =
-            E * dAcc +
-            derivEulerZYXToOmegaMultiplyVec(eulerZYX, accEuler) * dPos +
-            Edot * dVel +
-            derivEulerZYXToOmegaDotMultiplyVec(eulerZYX, velEuler, velEuler) *
-                dPos +
-            derivDotEulerZYXToOmegaDotMultiplyVec(eulerZYX, velEuler,
-                                                  velEuler) *
-                dVel;
+        jac_block.middleRows(i * 6 + 3, 3) = E * dAcc + derivEulerZYXToOmegaMultiplyVec(eulerZYX, accEuler) * dPos + Edot * dVel + derivEulerZYXToOmegaDotMultiplyVec(eulerZYX, velEuler, velEuler) * dPos + derivDotEulerZYXToOmegaDotMultiplyVec(eulerZYX, velEuler, velEuler) * dVel;
 
         Eigen::Vector3d tau = Eigen::Vector3d::Zero();
         for (unsigned int k = 0; k < _model.numFeet; k++) {
-          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(PAW_FORCES + "_" +
-                                           std::to_string(k)));
-          Eigen::Vector3d force = forceVars->position(t);
+          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(PAW_FORCES + "_" + std::to_string(k)));
+          Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(PAW_POS + "_" + std::to_string(k)));
-          Eigen::Vector3d bodyPos = positionVars->position(t);
-          Eigen::Vector3d pawPos = pawPosVars->position(t);
+          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(PAW_POS + "_" + std::to_string(k)));
+          Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
+          Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
           tau += (pawPos - bodyPos).cross(force);
 
           // tau += _model.feetPoses[k].cross(force);
         }
 
-        Jacobian multiplier =
-            (inertia_inv * derivRotationTransposeVector(eulerZYX, tau));
+        Jacobian multiplier = (inertia_inv * derivRotationTransposeVector(eulerZYX, tau));
         Jacobian res = -multiplier * dPos;
         jac_block.middleRows(i * 6 + 3, 3) += res;
 
@@ -186,25 +157,21 @@ public:
         std::string fVar = PAW_FORCES + "_" + std::to_string(k);
         std::string pVar = PAW_POS + "_" + std::to_string(k);
         if (var_set == fVar) {
-          auto positionVars = std::static_pointer_cast<TrajectoryVars>(
-              GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-          auto rotationVars = std::static_pointer_cast<TrajectoryVars>(
-              GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(fVar));
-          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(pVar));
+          auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
+          auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
+          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
 
           double t = 0.;
           for (unsigned int i = 0; i < _numSamplePoints; i++) {
-            Jacobian dPos = forceVars->jacobianPosition(t);
+            Jacobian dPos = forceVars->trajectoryJacobian(t, 0);
             jac_block.middleRows(i * 6, 3) = -dPos / _model.mass;
 
-            Eigen::Vector3d eulerZYX = rotationVars->position(t);
+            Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
             Jacobian R = eulerZYXToMatrix(eulerZYX);
 
-            Eigen::Vector3d pawPos = pawPosVars->position(t);
-            Eigen::Vector3d bodyPos = positionVars->position(t);
+            Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
+            Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
 
             Jacobian multiplier = (inertia_inv * R.transpose() *
                                    toSkewSymmetric(pawPos - bodyPos));
@@ -216,28 +183,23 @@ public:
         } else if (var_set == pVar) {
           auto positionVars = std::static_pointer_cast<TrajectoryVars>(
               GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-          auto rotationVars = std::static_pointer_cast<TrajectoryVars>(
-              GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(pVar));
-          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(
-              GetVariables()->GetComponent(fVar));
+          auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+          auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
+          auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
 
           double t = 0.;
           for (size_t i = 0; i < _numSamplePoints; ++i) {
-            Jacobian dPos = pawPosVars->jacobianPosition(t);
+            Jacobian dPos = pawPosVars->trajectoryJacobian(t, 0);
 
-            Eigen::Vector3d eulerZYX = rotationVars->position(t);
+            Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
             Jacobian R = eulerZYXToMatrix(eulerZYX);
 
-            Eigen::Vector3d f = forceVars->position(t);
+            Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
 
-            Eigen::Vector3d pawPos = pawPosVars->position(t);
-            Eigen::Vector3d bodyPos = positionVars->position(t);
+            Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
+            Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
 
-            Jacobian multiplier =
-                inertia_inv * R.transpose() *
-                derivSkewMultiplyVector((pawPos - bodyPos), f);
+            Jacobian multiplier = inertia_inv * R.transpose() * derivSkewMultiplyVector((pawPos - bodyPos), f);
             Jacobian res = -multiplier * dPos;
             jac_block.middleRows(i * 6 + 3, 3) = res;
 
@@ -269,8 +231,7 @@ public:
     return R.sparseView(1., -1.);
   }
 
-  Jacobian derivRotationVector(const Eigen::Vector3d &eulerZYX,
-                               const Eigen::Vector3d &v) const {
+  Jacobian derivRotationVector(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &v) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
     const double z = eulerZYX[0];
@@ -292,24 +253,18 @@ public:
 
     Jacobian jac(3, 3);
     // out[0] wrt Z(0)
-    jac.coeffRef(0, 0) = -cy * sz * v[0] + (-sz * sx * sy - cx * cz) * v[1] +
-                         (sx * cz - cx * sz * sy) * v[2];
+    jac.coeffRef(0, 0) = -cy * sz * v[0] + (-sz * sx * sy - cx * cz) * v[1] + (sx * cz - cx * sz * sy) * v[2];
     // out[0] wrt Y(1)
-    jac.coeffRef(0, 1) =
-        -sy * cz * v[0] + cz * sx * cy * v[1] + cx * cz * cy * v[2];
+    jac.coeffRef(0, 1) = -sy * cz * v[0] + cz * sx * cy * v[1] + cx * cz * cy * v[2];
     // out[0] wrt X(2)
-    jac.coeffRef(0, 2) =
-        (cz * cx * sy + sx * sz) * v[1] + (-cx * sz + sx * cz * sy) * v[2];
+    jac.coeffRef(0, 2) = (cz * cx * sy + sx * sz) * v[1] + (-cx * sz + sx * cz * sy) * v[2];
 
     // out[1] wrt Z(0)
-    jac.coeffRef(1, 0) = cy * cz * v[0] + (-cx * sz + sx * sy * cz) * v[1] +
-                         (cx * sy * cz + sz * sx) * v[2];
+    jac.coeffRef(1, 0) = cy * cz * v[0] + (-cx * sz + sx * sy * cz) * v[1] + (cx * sy * cz + sz * sx) * v[2];
     // out[1] wrt Y(1)
-    jac.coeffRef(1, 1) =
-        -sy * sz * v[0] + sx * cy * sz * v[1] + cx * cy * sz * v[2];
+    jac.coeffRef(1, 1) = -sy * sz * v[0] + sx * cy * sz * v[1] + cx * cy * sz * v[2];
     // out[1] wrt X(2)
-    jac.coeffRef(1, 2) =
-        (-sx * cz + cx * sy * sz) * v[1] + (-sx * sy * sz - cz * cx) * v[2];
+    jac.coeffRef(1, 2) = (-sx * cz + cx * sy * sz) * v[1] + (-sx * sy * sz - cz * cx) * v[2];
 
     // out[2] wrt Z(0)
     // jac.coeffRef(2, 0) = 0.;
@@ -321,8 +276,7 @@ public:
     return jac;
   }
 
-  Jacobian derivRotationTransposeVector(const Eigen::Vector3d &eulerZYX,
-                                        const Eigen::Vector3d &v) const {
+  Jacobian derivRotationTransposeVector(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &v) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
     const double z = eulerZYX[0];
@@ -354,21 +308,16 @@ public:
     jac.coeffRef(1, 0) =
         (-sz * sx * sy - cx * cz) * v[0] + (-cx * sz + sx * sy * cz) * v[1];
     // out[1] wrt Y(1)
-    jac.coeffRef(1, 1) =
-        cz * sx * cy * v[0] + sx * cy * sz * v[1] - sy * sx * v[2];
+    jac.coeffRef(1, 1) = cz * sx * cy * v[0] + sx * cy * sz * v[1] - sy * sx * v[2];
     // out[1] wrt X(2)
-    jac.coeffRef(1, 2) = (cz * cx * sy + sx * sz) * v[0] +
-                         (-sx * cz + cx * sy * sz) * v[1] + cy * cx * v[2];
+    jac.coeffRef(1, 2) = (cz * cx * sy + sx * sz) * v[0] + (-sx * cz + cx * sy * sz) * v[1] + cy * cx * v[2];
 
     // out[2] wrt Z(0)
-    jac.coeffRef(2, 0) =
-        (sx * cz - cx * sz * sy) * v[0] + (cx * sy * cz + sz * sx) * v[1];
+    jac.coeffRef(2, 0) = (sx * cz - cx * sz * sy) * v[0] + (cx * sy * cz + sz * sx) * v[1];
     // out[2] wrt Y(1)
-    jac.coeffRef(2, 1) =
-        cx * cz * cy * v[0] + cx * cy * sz * v[1] - cx * sy * v[2];
+    jac.coeffRef(2, 1) = cx * cz * cy * v[0] + cx * cy * sz * v[1] - cx * sy * v[2];
     // out[2] wrt X(2)
-    jac.coeffRef(2, 2) = (cx * sz - sx * cz * sy) * v[0] +
-                         (-sx * sy * sz - cz * cx) * v[1] - sx * cy * v[2];
+    jac.coeffRef(2, 2) = (cx * sz - sx * cz * sy) * v[0] + (-sx * sy * sz - cz * cx) * v[1] - sx * cy * v[2];
 
     return jac;
   }
@@ -398,8 +347,7 @@ public:
     return E;
   }
 
-  Jacobian derivEulerZYXToOmegaMultiplyVec(const Eigen::Vector3d &eulerZYX,
-                                           const Eigen::Vector3d &v) const {
+  Jacobian derivEulerZYXToOmegaMultiplyVec(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &v) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
 
@@ -439,8 +387,7 @@ public:
     return jac;
   }
 
-  Jacobian eulerZYXToOmegaDot(const Eigen::Vector3d &eulerZYX,
-                              const Eigen::Vector3d &eulerZYXDot) const {
+  Jacobian eulerZYXToOmegaDot(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &eulerZYXDot) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
     const double dx = eulerZYXDot[2];
@@ -466,10 +413,7 @@ public:
     return Edot;
   }
 
-  Jacobian
-  derivEulerZYXToOmegaDotMultiplyVec(const Eigen::Vector3d &eulerZYX,
-                                     const Eigen::Vector3d &eulerZYXDot,
-                                     const Eigen::Vector3d &v) const {
+  Jacobian derivEulerZYXToOmegaDotMultiplyVec(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &eulerZYXDot, const Eigen::Vector3d &v) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
     const double dx = eulerZYXDot[2];
@@ -511,10 +455,7 @@ public:
     return jac;
   }
 
-  Jacobian
-  derivDotEulerZYXToOmegaDotMultiplyVec(const Eigen::Vector3d &eulerZYX,
-                                        const Eigen::Vector3d &,
-                                        const Eigen::Vector3d &v) const {
+  Jacobian derivDotEulerZYXToOmegaDotMultiplyVec(const Eigen::Vector3d &eulerZYX, const Eigen::Vector3d &, const Eigen::Vector3d &v) const {
     const double x = eulerZYX[2];
     const double y = eulerZYX[1];
 
@@ -569,8 +510,7 @@ public:
     return skew;
   }
 
-  Jacobian derivSkewMultiplyVector(const Eigen::Vector3d &,
-                                   const Eigen::Vector3d &v) const {
+  Jacobian derivSkewMultiplyVector(const Eigen::Vector3d &, const Eigen::Vector3d &v) const {
     // out = skew * v
     // out[0] = -vec[2]*v[1] + vec[1]*v[2]
     // out[1] = vec[2]*v[0] - vec[0]*v[2]
