@@ -13,7 +13,7 @@ find_package(ifopt REQUIRED)
 find_package(robo_spline 1.0 REQUIRED)
 
 # Create executable
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main2.cpp)
 
 # Link libraries and add compiler options
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -22,5 +22,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ifopt::ifopt_ipopt
 )
 
-target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3") # -Werror
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_options(${PROJECT_NAME} PRIVATE "-Wall;-Wextra;-O3") # -Werror
 target_compile_definitions(${PROJECT_NAME} PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

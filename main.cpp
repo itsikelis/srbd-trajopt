@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 
-#include "traj_opt.hpp"
+// #include "traj_opt.hpp"
 #include "utils/srbd.hpp"
 
 // Return 3D inertia tensor from 6D vector.
@@ -34,9 +34,7 @@ int main()
     //   const double dz = 0.2;
 
     //   Anymal characteristics
-    Eigen::Matrix3d inertia = InertiaTensor(0.88201174, 1.85452968, 1.97309185,
-        0.00137526, 0.00062895,
-        0.00018922);
+    Eigen::Matrix3d inertia = InertiaTensor(0.88201174, 1.85452968, 1.97309185, 0.00137526, 0.00062895, 0.00018922);
     const double m_b = 30.4213964625;
     const double x_nominal_b = 0.34;
     const double y_nominal_b = 0.19;
