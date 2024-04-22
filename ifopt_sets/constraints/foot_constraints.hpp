@@ -283,16 +283,17 @@ namespace trajopt {
                 }
             }
             else if (var_set == _footPosVarsName) {
-                double t = 0.;
-                for (size_t i = 0; i < _numSamples; ++i) {
-                    Jacobian R = eulerZYXToMatrix(bodyRotVars->trajectoryEval(t, 0));
-                    Jacobian dFootPos = footPosVars->trajectoryJacobian(t, 0);
-
-                    Jacobian res = R.transpose() * dFootPos;
-                    jac_block.middleRows(i * 3, 3) = res;
-
-                    t += _sampleTime;
-                }
+                // double t = 0.;
+                // for (size_t i = 0; i < _numSamples; ++i) {
+                //     Jacobian R = eulerZYXToMatrix(bodyRotVars->trajectoryEval(t, 0));
+                //     Jacobian dFootPos = footPosVars->trajectoryJacobian(t, 0);
+                //
+                //     Jacobian res = R.transpose() * dFootPos;
+                //     std::cout << res.rows() << ", " << res.cols() << std::endl;
+                //     jac_block.middleRows(i * 3, 3) = res;
+                //
+                //     t += _sampleTime;
+                // }
             }
         }
 
@@ -374,5 +375,4 @@ namespace trajopt {
         const size_t _numSamples;
         const double _sampleTime;
     };
-
 } // namespace trajopt

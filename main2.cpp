@@ -35,10 +35,10 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 250;
-    size_t numSamples = 250;
+    static constexpr size_t numKnots = 50;
+    size_t numSamples = 50;
 
-    double totalTime = 2.5;
+    double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
     auto polyTimes = Eigen::VectorXd(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
@@ -47,7 +47,7 @@ int main()
 
     // Add body pos and rot var sets.
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5);
-    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0.2, 0.2, 0.5 + terrain.z(1., 1.));
+    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.z(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = fillBoundVector(initBodyPos, targetBodyPos, 6 * numKnots);
     auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
 
@@ -62,8 +62,8 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    // auto dynamConstr = std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime);
-    // nlp.AddConstraintSet(dynamConstr);
+    auto dynamConstr = std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime);
+    nlp.AddConstraintSet(dynamConstr);
 
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
@@ -71,7 +71,7 @@ int main()
     // Add feet pos and force var sets.
     size_t numPosSteps = 2;
     size_t numForceSteps = 1;
-    Eigen::Vector3d phaseTimes = {1., 0.5, 1.};
+    Eigen::Vector3d phaseTimes = {0.2, 0.1, 0.2};
     std::vector<size_t> posKnotsPerSwing = {3};
     std::vector<size_t> forceKnotsPerSwing = {3, 3};
 
