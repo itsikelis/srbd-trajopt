@@ -189,31 +189,34 @@ namespace trajopt {
                             t += _sampleTime;
                         }
                     }
-                    //         else if (var_set == pVar) {
-                    //             auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
-                    //             auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-                    //             auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
-                    //             auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
-                    //
-                    //             double t = 0.;
-                    //             for (size_t i = 0; i < _numSamplePoints; ++i) {
-                    //                 Jacobian dPos = pawPosVars->trajectoryJacobian(t, 0);
-                    //
-                    //                 Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
-                    //                 Jacobian R = eulerZYXToMatrix(eulerZYX);
-                    //
-                    //                 Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
-                    //
-                    //                 Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
-                    //                 Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
-                    //
-                    //                 Jacobian multiplier = inertia_inv * R.transpose() * derivSkewMultiplyVector((pawPos - bodyPos), f);
-                    //                 Jacobian res = -multiplier * dPos;
-                    //                 jac_block.middleRows(i * 6 + 3, 3) = res;
-                    //
-                    //                 t += _sampleTime;
-                    //             }
-                    //         }
+                    else if (var_set == pVar) {
+                        auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
+                        auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
+                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
+                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
+
+                        double t = 0.;
+                        for (size_t i = 0; i < _numSamplePoints; ++i) {
+                            Jacobian dPos = pawPosVars->trajectoryJacobian(t, 0);
+
+                            std::cout << "dPos dims: " << dPos.rows() << ", " << dPos.cols() << std::endl;
+                            std::cout << "Jac Block dims: " << jac_block.rows() << ", " << jac_block.cols() << std::endl;
+
+                            Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
+                            Jacobian R = eulerZYXToMatrix(eulerZYX);
+
+                            Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
+
+                            Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
+                            Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
+
+                            Jacobian multiplier = inertia_inv * R.transpose() * derivSkewMultiplyVector((pawPos - bodyPos), f);
+                            Jacobian res = -multiplier * dPos;
+                            jac_block.middleRows(i * 6 + 3, 3) = res;
+
+                            t += _sampleTime;
+                        }
+                    }
                 }
             }
         }
