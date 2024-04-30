@@ -92,7 +92,8 @@ int main()
         nlp.AddVariableSet(footPosVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
+        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
         nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyPosConstraints>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, rspl::Phase::Swing);
@@ -112,6 +113,14 @@ int main()
     // Solve.
     ipopt.Solve(nlp);
     // nlp.PrintCurrent();
+
+    // Get trajectory.
+    // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;
+    // std::string var_set_name = trajopt::BODY_ROT_TRAJECTORY;
+    std::string var_set_name = trajopt::FOOT_POS + "_0";
+    // std::string var_set_name = trajopt::FOOT_FORCE + "_0";
+
+    // auto traj = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(var_set_name))->Trajectory();
 
     return 0;
 }

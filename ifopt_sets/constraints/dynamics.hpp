@@ -55,7 +55,7 @@ namespace trajopt {
                 Eigen::Vector3d omegaDot = E * accEuler + Edot * velEuler;
 
                 g.segment(i * 6, 3) = acc - f / _model.mass - _model.gravity;
-                g.segment(i * 6 + 3, 3) = omegaDot - (_model.inertia.inverse() * (R.transpose() * tau - omega.cross(_model.inertia * omega)));
+                g.segment(i * 6 + 3, 3) = omegaDot - (_model.inertia_inv * (R.transpose() * tau - omega.cross(_model.inertia * omega)));
 
                 t += _sampleTime;
             }
@@ -198,9 +198,6 @@ namespace trajopt {
                         double t = 0.;
                         for (size_t i = 0; i < _numSamplePoints; ++i) {
                             Jacobian dPos = pawPosVars->trajectoryJacobian(t, 0);
-
-                            std::cout << "dPos dims: " << dPos.rows() << ", " << dPos.cols() << std::endl;
-                            std::cout << "Jac Block dims: " << jac_block.rows() << ", " << jac_block.cols() << std::endl;
 
                             Eigen::Vector3d eulerZYX = rotationVars->trajectoryEval(t, 0);
                             Jacobian R = eulerZYXToMatrix(eulerZYX);
