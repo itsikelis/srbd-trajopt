@@ -13,7 +13,7 @@ find_package(ifopt REQUIRED)
 find_package(robo_spline 1.0 REQUIRED)
 
 # Create executable
-add_executable(${PROJECT_NAME} main2.cpp)
+add_executable(${PROJECT_NAME} main.cpp)
 
 # Link libraries and add compiler options
 target_link_libraries(${PROJECT_NAME} PUBLIC

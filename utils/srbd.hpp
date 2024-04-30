@@ -49,26 +49,4 @@ namespace trajopt {
         Eigen::Vector3d b = Eigen::Vector3d(0., 1., 0.);
         double mu = 1.; // friction coefficient
     };
-
-    struct TrajOptArguments {
-        size_t numKnots;
-        size_t numSamples;
-        size_t numSteps;
-        size_t numKnotsPerSwing;
-
-        double stepPhaseTime;
-        double swingPhaseTime;
-
-        Eigen::Vector3d initPos;
-        Eigen::Vector3d targetPos;
-        Eigen::Vector3d initVel = Eigen::Vector3d::Zero();
-        Eigen::Vector3d targetVel = Eigen::Vector3d::Zero();
-
-        Eigen::Vector3d initRot = Eigen::Vector3d::Zero();
-        Eigen::Vector3d targetRot = Eigen::Vector3d::Zero();
-        Eigen::Vector3d initAngVel = Eigen::Vector3d::Zero();
-        Eigen::Vector3d targetAngVel = Eigen::Vector3d::Zero();
-
-        std::string gait;
-    };
 } // namespace trajopt
