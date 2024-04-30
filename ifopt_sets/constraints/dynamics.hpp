@@ -212,6 +212,8 @@ namespace trajopt {
 
                             Jacobian multiplier = inertia_inv * R.transpose() * derivSkewMultiplyVector((pawPos - bodyPos), f);
                             Jacobian res = -multiplier * dPos;
+                            // std::cout << res.rows() << "x" << res.cols() << std::endl;
+                            // std::cout << jac_block.middleRows(i * 6 + 3, 3).rows() << "x" << jac_block.middleRows(i * 6 + 3, 3).cols() << std::endl;
                             jac_block.middleRows(i * 6 + 3, 3) = res;
 
                             t += _sampleTime;
