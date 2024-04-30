@@ -1,11 +1,15 @@
+#include <chrono>
 #include <ctime>
+#include <iomanip>
 
 #include <Eigen/Dense>
 
-#include <ifopt/ipopt_solver.h>
-#include <ifopt/problem.h>
+#include <iostream>
 #include <memory>
 #include <numeric>
+
+#include <ifopt/ipopt_solver.h>
+#include <ifopt/problem.h>
 
 #include "ifopt_sets/constraints/acceleration.hpp"
 #include "ifopt_sets/constraints/dynamics.hpp"
@@ -14,6 +18,10 @@
 #include "ifopt_sets/variables.hpp"
 #include "utils/srbd.hpp"
 #include "utils/types.hpp"
+
+int startcputime, endcputime, wcts, wcte;
+
+// your_algorithm
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
@@ -102,7 +110,6 @@ int main()
         nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, terrain, numSamples, sampleTime));
     }
 
-    // Solve
     std::cout << "Solving.." << std::endl;
     ifopt::IpoptSolver ipopt;
     ipopt.SetOption("jacobian_approximation", "exact");
@@ -111,9 +118,14 @@ int main()
     ipopt.SetOption("max_iter", static_cast<int>(1000));
 
     // Solve.
+    auto t_start = std::chrono::high_resolution_clock::now();
+
     ipopt.Solve(nlp);
     // nlp.PrintCurrent();
+    const auto t_end = std::chrono::high_resolution_clock::now();
 
+    auto duration = std::chrono::duration<double, std::milli>(t_end - t_start);
+    std::cout << "Wall clock time passed: " << duration.count() / 1000 << " seconds." << std::endl;
     // Get trajectory.
     // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;
     // std::string var_set_name = trajopt::BODY_ROT_TRAJECTORY;
