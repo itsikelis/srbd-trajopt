@@ -76,7 +76,7 @@ namespace trajopt {
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             Jacobian inertia = _model.inertia.sparseView(1., -1.); // TO-DO: Make this better
-            Jacobian inertia_inv = _model.inertia.inverse().sparseView(1., -1.);
+            Jacobian inertia_inv = _model.inertia_inv.sparseView(1., -1.);
 
             if (var_set == BODY_POS_TRAJECTORY) {
                 auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
