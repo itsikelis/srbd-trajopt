@@ -1,6 +1,5 @@
 #include <chrono>
 #include <ctime>
-#include <iomanip>
 
 #include <Eigen/Dense>
 
@@ -11,17 +10,14 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
+#include "ifopt_sets/variables.hpp"
+#include "utils/srbd.hpp"
+#include "utils/terrain.hpp"
+#include "utils/types.hpp"
+
 #include "ifopt_sets/constraints/acceleration.hpp"
 #include "ifopt_sets/constraints/dynamics.hpp"
 #include "ifopt_sets/constraints/foot_constraints.hpp"
-
-#include "ifopt_sets/variables.hpp"
-#include "utils/srbd.hpp"
-#include "utils/types.hpp"
-
-int startcputime, endcputime, wcts, wcte;
-
-// your_algorithm
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
@@ -32,13 +28,17 @@ ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d
 
 int main()
 {
-    std::srand(std::time(0));
-
     trajopt::SingleRigidBodyDynamicsModel model;
     init_model(model);
 
-    // Create a Terrain Model (Select from predefined ones)
-    trajopt::Terrain terrain("");
+    // TODO: Handle zero grids.
+    trajopt::TerrainGrid<200, 200> terrain(0.7, -100, -100, 100, 100);
+    std::vector<double> grid;
+    grid.resize(200 * 200);
+    for (auto& item : grid) {
+        item = 0.;
+    }
+    terrain.set_grid(grid);
 
     // Add variable sets.
     ifopt::Problem nlp;
@@ -54,8 +54,8 @@ int main()
     }
 
     // Add body pos and rot var sets.
-    Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5);
-    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.z(0., 0.));
+    Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
+    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = fillBoundVector(initBodyPos, targetBodyPos, 6 * numKnots);
     auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
 
@@ -107,7 +107,7 @@ int main()
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
     std::cout << "Solving.." << std::endl;
@@ -125,7 +125,8 @@ int main()
     const auto t_end = std::chrono::high_resolution_clock::now();
 
     auto duration = std::chrono::duration<double, std::milli>(t_end - t_start);
-    std::cout << "Wall clock time passed: " << duration.count() / 1000 << " seconds." << std::endl;
+    std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
+
     // Get trajectory.
     // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;
     // std::string var_set_name = trajopt::BODY_ROT_TRAJECTORY;
@@ -137,8 +138,7 @@ int main()
     return 0;
 }
 
-inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz,
-    double Ixy, double Ixz, double Iyz)
+inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz)
 {
     Eigen::Matrix3d I;
     I << Ixx, -Ixy, -Ixz, -Ixy, Iyy, -Iyz, -Ixz, -Iyz, Izz;

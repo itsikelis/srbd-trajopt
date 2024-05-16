@@ -3,6 +3,7 @@
 #include <ifopt/constraint_set.h>
 
 #include "../../utils/srbd.hpp"
+#include "../../utils/terrain.hpp"
 #include "../../utils/types.hpp"
 #include "../variables.hpp"
 
@@ -11,11 +12,13 @@ namespace trajopt {
     public:
         FrictionConeConstraints(
             const std::shared_ptr<PhasedTrajectoryVars>& forceVars,
-            const trajopt::Terrain& terrain,
+            const std::shared_ptr<PhasedTrajectoryVars>& posVars,
+            const trajopt::TerrainGrid<200, 200>& terrain,
             size_t numSamples,
             double sampleTime)
             : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
               _forceVarsName(forceVars->GetName()),
+              _posVarsName(posVars->GetName()),
               _numSamples(numSamples),
               _sampleTime(sampleTime),
               _terrain(terrain) {}
@@ -25,19 +28,24 @@ namespace trajopt {
             VectorXd g = VectorXd::Zero(GetRows());
 
             auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+            auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
             double t = 0.;
             for (size_t i = 0; i < _numSamples; ++i) {
                 Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
-                double fn = f.dot(_terrain.n);
-                double ft = f.dot(_terrain.t);
-                double fb = f.dot(_terrain.b);
+                Eigen::Vector3d pos = posVars->trajectoryEval(t, 0);
+                double x = pos[0];
+                double y = pos[1];
+
+                double fn = f.dot(_terrain.n(x, y));
+                double ft = f.dot(_terrain.t(x, y));
+                double fb = f.dot(_terrain.b(x, y));
 
                 g[i * 5 + 0] = fn;
-                g[i * 5 + 1] = ft - _terrain.mu * fn;
-                g[i * 5 + 2] = -ft - _terrain.mu * fn;
-                g[i * 5 + 3] = fb - _terrain.mu * fn;
-                g[i * 5 + 4] = -fb - _terrain.mu * fn;
+                g[i * 5 + 1] = ft - _terrain.mu() * fn;
+                g[i * 5 + 2] = -ft - _terrain.mu() * fn;
+                g[i * 5 + 3] = fb - _terrain.mu() * fn;
+                g[i * 5 + 4] = -fb - _terrain.mu() * fn;
 
                 t += _sampleTime;
             }
@@ -60,29 +68,32 @@ namespace trajopt {
             return b;
         }
 
-        void FillJacobianBlock(std::string var_set,
-            Jacobian& jac_block) const override
+        void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _forceVarsName) {
                 auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+                auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
                 double t = 0.;
                 for (size_t i = 0; i < _numSamples; ++i) {
                     Jacobian fPos = forceVars->trajectoryJacobian(t, 0);
+                    Eigen::Vector3d footPos = posVars->trajectoryEval(t, 0);
+                    auto x = footPos[0];
+                    auto y = footPos[1];
 
-                    Jacobian mult0 = _terrain.n.transpose().sparseView(1, -1);
+                    Jacobian mult0 = _terrain.n(x, y).transpose().sparseView(1, -1);
                     Jacobian res0 = mult0 * fPos;
 
-                    Jacobian mult1 = (_terrain.t - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
+                    Jacobian mult1 = (_terrain.t(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
                     Jacobian res1 = mult1 * fPos;
 
-                    Jacobian mult2 = (-_terrain.t - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
+                    Jacobian mult2 = (-_terrain.t(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
                     Jacobian res2 = mult2 * fPos;
 
-                    Jacobian mult3 = (_terrain.b - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
+                    Jacobian mult3 = (_terrain.b(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
                     Jacobian res3 = mult3 * fPos;
 
-                    Jacobian mult4 = (-_terrain.b - _terrain.mu * _terrain.n).transpose().sparseView(1, -1);
+                    Jacobian mult4 = (-_terrain.b(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
                     Jacobian res4 = mult4 * fPos;
 
                     jac_block.middleRows(i * 5 + 0, 1) += res0;
@@ -97,16 +108,16 @@ namespace trajopt {
         }
 
     private:
-        const std::string _forceVarsName;
+        const std::string _forceVarsName, _posVarsName;
         const size_t _numSamples;
         const double _sampleTime;
-        const trajopt::Terrain _terrain;
+        const trajopt::TerrainGrid<200, 200> _terrain;
     };
 
     class FootPosTerrainConstraints : public ifopt::ConstraintSet {
     public:
         FootPosTerrainConstraints(const std::shared_ptr<PhasedTrajectoryVars>& vars,
-            const trajopt::Terrain& terrain, size_t numSteps,
+            const trajopt::TerrainGrid<200, 200>& terrain, size_t numSteps,
             size_t numSwings, std::vector<size_t> numKnotsPerSwing)
             : ConstraintSet(kSpecifyLater, vars->GetName() + "_foot_pos_terrain"),
               _varsName(vars->GetName()),
@@ -135,14 +146,14 @@ namespace trajopt {
             size_t sIdx = 0;
             for (size_t i = 0; i < _numPhases; ++i) {
                 if (standing) {
-                    g(cIdx++) = values[valIdx + 2] - _terrain.z(values[valIdx], values[valIdx + 1]);
+                    g(cIdx++) = values[valIdx + 2] - _terrain.height(values[valIdx], values[valIdx + 1]);
                     valIdx += 3;
                 }
                 else {
                     size_t swingKnots = _numKnotsPerSwing[sIdx];
                     sIdx++;
                     for (size_t k = 0; k < swingKnots; ++k) {
-                        g(cIdx++) = values[valIdx + 2] - _terrain.z(values[valIdx], values[valIdx + 1]);
+                        g(cIdx++) = values[valIdx + 2] - _terrain.height(values[valIdx], values[valIdx + 1]);
                         valIdx += 6;
                     }
                 }
@@ -177,8 +188,7 @@ namespace trajopt {
             return b;
         }
 
-        void FillJacobianBlock(std::string var_set,
-            Jacobian& jac_block) const override
+        void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _varsName) {
                 auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(
@@ -213,7 +223,7 @@ namespace trajopt {
 
     private:
         const std::string _varsName;
-        const trajopt::Terrain _terrain;
+        const trajopt::TerrainGrid<200, 200> _terrain;
         const size_t _numPhases;
         const std::vector<size_t> _numKnotsPerSwing;
     };
