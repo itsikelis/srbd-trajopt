@@ -10,14 +10,14 @@
 #include <numeric>
 #include <random>
 
-#include "ifopt_sets/constraints/acceleration.hpp"
-#include "ifopt_sets/constraints/dynamics.hpp"
-#include "ifopt_sets/constraints/foot_constraints.hpp"
+#include "../ifopt_sets/constraints/acceleration.hpp"
+#include "../ifopt_sets/constraints/dynamics.hpp"
+#include "../ifopt_sets/constraints/foot_constraints.hpp"
 
-#include "ifopt_sets/variables.hpp"
-#include "utils/srbd.hpp"
-#include "utils/terrain.hpp"
-#include "utils/types.hpp"
+#include "../ifopt_sets/variables.hpp"
+#include "../utils/srbd.hpp"
+#include "../utils/terrain.hpp"
+#include "../utils/types.hpp"
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
