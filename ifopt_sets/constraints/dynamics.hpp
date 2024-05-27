@@ -36,10 +36,10 @@ namespace trajopt {
                 Eigen::Vector3d f = Eigen::Vector3d::Zero();
                 Eigen::Vector3d tau = Eigen::Vector3d::Zero();
                 for (unsigned int k = 0; k < _model.numFeet; k++) {
-                    auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
+                    auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
                     Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-                    auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
+                    auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
                     Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
                     Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
                     tau += (pawPos - bodyPos).cross(force);
@@ -93,8 +93,8 @@ namespace trajopt {
                         std::string fVar = FOOT_FORCE + "_" + std::to_string(k);
                         std::string pVar = FOOT_FORCE + "_" + std::to_string(k);
 
-                        Eigen::Vector3d pawPos = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar))->trajectoryEval(t, 0);
-                        Eigen::Vector3d f = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar))->trajectoryEval(t, 0);
+                        Eigen::Vector3d pawPos = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar))->trajectoryEval(t, 0);
+                        Eigen::Vector3d f = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar))->trajectoryEval(t, 0);
                         Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
 
                         derivTauSum -= derivSkewMultiplyVector((pawPos - bodyPos), f);
@@ -130,10 +130,10 @@ namespace trajopt {
 
                     Eigen::Vector3d tau = Eigen::Vector3d::Zero();
                     for (unsigned int k = 0; k < _model.numFeet; k++) {
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
                         Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
                         Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
                         Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
                         tau += (pawPos - bodyPos).cross(force);
@@ -168,8 +168,8 @@ namespace trajopt {
                     if (var_set == fVar) {
                         auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
                         auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar));
 
                         double t = 0.;
                         for (unsigned int i = 0; i < _numSamplePoints; i++) {
@@ -192,8 +192,8 @@ namespace trajopt {
                     else if (var_set == pVar) {
                         auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
                         auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar));
 
                         double t = 0.;
                         for (size_t i = 0; i < _numSamplePoints; ++i) {
