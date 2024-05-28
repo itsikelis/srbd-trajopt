@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
 project(trajopt VERSION 1.0)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS, ON)
+# Export compile commands for LSP.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find Eigen
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -21,5 +22,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ifopt::ifopt_ipopt
 )
 
-target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3") # -Werror
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_options(${PROJECT_NAME} PRIVATE "-Wall;-Wextra;-O3") # -Werror
 target_compile_definitions(${PROJECT_NAME} PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+add_subdirectory(test)

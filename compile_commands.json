@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/itsikelis/Documents/Thesis/srbd-trajopt/build",
+  "command": "/usr/bin/c++ -DSRCPATH=\\\"/home/itsikelis/Documents/Thesis/srbd-trajopt\\\" -isystem /usr/include/eigen3 -Wall -Wextra -O3 -o CMakeFiles/trajopt.dir/main.cpp.o -c /home/itsikelis/Documents/Thesis/srbd-trajopt/main.cpp",
+  "file": "/home/itsikelis/Documents/Thesis/srbd-trajopt/main.cpp"
+}
+]
