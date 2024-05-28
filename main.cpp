@@ -19,16 +19,12 @@
 #include "ifopt_sets/constraints/foot_constraints.hpp"
 
 // Return 3D inertia tensor from 6D vector.
-inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
-
-void init_model(trajopt::SingleRigidBodyDynamicsModel& model);
-
 ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size);
 
 int main()
 {
     trajopt::SingleRigidBodyDynamicsModel model;
-    init_model(model);
+    trajopt::init_model_anymal(model);
 
     // TODO: Handle zero grids.
     trajopt::TerrainGrid<200, 200> terrain(0.7, -100, -100, 100, 100);
@@ -45,7 +41,7 @@ int main()
     static constexpr size_t numKnots = 20;
     size_t numSamples = 24;
 
-    double totalTime = 0.5;
+    double totalTime = 1.0;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
     auto polyTimes = Eigen::VectorXd(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
@@ -75,16 +71,9 @@ int main()
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
 
-    // Add feet pos and force var sets.
-    // size_t numPosSteps = 2;
-    // size_t numForceSteps = 1;
-    // Eigen::Vector3d phaseTimes = {0.2, 0.1, 0.2};
-    // std::vector<size_t> posKnotsPerSwing = {3};
-    // std::vector<size_t> forceKnotsPerSwing = {3, 3};
-
     // size_t numPhasedKnots = numPosSteps + std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
     // size_t numPhasedVars = 3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
-    // double max_force = 2. * model.mass * std::abs(model.gravity[2]);
+    double max_force = 2. * model.mass * std::abs(model.gravity[2]);
     auto initFootPosVals = Eigen::VectorXd(3 * 2 * numKnots);
     auto initFootForceVals = Eigen::VectorXd(3 * 2 * numKnots);
 
@@ -92,25 +81,24 @@ int main()
     // std::cout << numPhasedKnots << " , " << initFootForceVals.rows() << std::endl;
 
     ifopt::Component::VecBound footPosBounds(6 * numKnots, ifopt::NoBound);
-    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::NoBound);
-    // ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-max_force, max_force));
+    // ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::NoBound);
+    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-max_force, max_force));
 
     for (size_t i = 0; i < model.numFeet; ++i) {
-        auto footPosBoundsNew = footPosBounds;
-
         // Add initial and final positions for each foot.
-        footPosBoundsNew[0] = (i == 0 || i == 1) ? ifopt::Bounds(0.34, 0.34) : ifopt::Bounds(-0.34, -0.34);
-        footPosBoundsNew[1] = (i == 1 || i == 3) ? ifopt::Bounds(0.19, 0.19) : ifopt::Bounds(-0.19, -0.19);
+        footPosBounds[0] = (i == 0 || i == 1) ? ifopt::Bounds(0.34, 0.34) : ifopt::Bounds(-0.34, -0.34);
+        footPosBounds[1] = (i == 1 || i == 3) ? ifopt::Bounds(0.19, 0.19) : ifopt::Bounds(-0.19, -0.19);
 
-        footPosBoundsNew[6 * numKnots - 3] = (i == 0 || i == 1) ? ifopt::Bounds(0.34, 0.34) : ifopt::Bounds(-0.34, -0.34);
-        footPosBoundsNew[6 * numKnots - 2] = (i == 1 || i == 3) ? ifopt::Bounds(0.19, 0.19) : ifopt::Bounds(-0.19, -0.19);
+        footPosBounds[6 * numKnots - 3] = (i == 0 || i == 1) ? ifopt::Bounds(targetBodyPos[0] + 0.34, targetBodyPos[0] + 0.34) : ifopt::Bounds(targetBodyPos[0] - 0.34, targetBodyPos[0] - 0.34);
+        footPosBounds[6 * numKnots - 2] = (i == 1 || i == 3) ? ifopt::Bounds(targetBodyPos[1] + 0.19, targetBodyPos[1] + 0.19) : ifopt::Bounds(targetBodyPos[1] - 0.19, targetBodyPos[1] - 0.19);
 
-        auto footPosVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, polyTimes, footPosBoundsNew);
+        auto footPosVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, polyTimes, footPosBounds);
         nlp.AddVariableSet(footPosVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(footPosVars));
         // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyPosConstraints>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainPosConstraints>(footPosVars, terrain, numKnots));
 
         auto footForceVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, polyTimes, footForceBounds);
         nlp.AddVariableSet(footForceVars);
@@ -118,6 +106,7 @@ int main()
         nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
 
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numKnots));
+        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numKnots));
     }
 
     std::cout << "Solving.." << std::endl;
@@ -125,7 +114,7 @@ int main()
     ipopt.SetOption("jacobian_approximation", "exact");
     // ipopt.SetOption("jacobian_approximation", "finite-difference-values");
     ipopt.SetOption("max_cpu_time", 1e50);
-    ipopt.SetOption("max_iter", static_cast<int>(200));
+    ipopt.SetOption("max_iter", static_cast<int>(300));
 
     // Solve.
     auto t_start = std::chrono::high_resolution_clock::now();
@@ -137,81 +126,62 @@ int main()
     auto duration = std::chrono::duration<double, std::milli>(t_end - t_start);
     std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
 
-    // Get trajectory.
-    // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;
-    // std::string var_set_name = trajopt::BODY_ROT_TRAJECTORY;
-    // std::string var_set_name = trajopt::FOOT_POS + "_0";
-    // std::string var_set_name = trajopt::FOOT_FORCE + "_0";
+    // Print variables.
 
-    auto body_pos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->GetValues();
+    double dt = 0.;
+    for (size_t i = 0; i < numSamples; ++i) {
+        std::cout << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(dt, 0).transpose() << std::endl;
 
-    for (auto& item : body_pos) {
-        std::cout << item << ", ";
+        dt += sampleTime;
     }
-    std::cout << std::endl;
+
     std::cout << std::endl;
 
-    auto foot_pos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_0"))->GetValues();
+    dt = 0.;
+    for (size_t i = 0; i < numSamples; ++i) {
+        std::cout << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_0"))->trajectoryEval(dt, 0).transpose() << std::endl;
 
-    for (auto& item : foot_pos) {
-        std::cout << item << ", ";
+        dt += sampleTime;
     }
-    std::cout << std::endl;
+
     std::cout << std::endl;
 
-    auto foot_force = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_0"))->GetValues();
+    dt = 0.;
+    for (size_t i = 0; i < numSamples; ++i) {
+        std::cout << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_0"))->trajectoryEval(dt, 0).transpose() << std::endl;
 
-    for (auto& item : foot_force) {
-        std::cout << item << ", ";
+        dt += sampleTime;
     }
+
     std::cout << std::endl;
+    // auto body_pos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->GetValues();
+    //
+    // for (size_t i = 0; i < numKnots; ++i) {
+    //     std::cout << body_pos[i * 6 + 0] << ", ";
+    //     std::cout << body_pos[i * 6 + 1] << ", ";
+    //     std::cout << body_pos[i * 6 + 2] << std::endl;
+    // }
+    // std::cout << std::endl;
+    //
+    // auto foot_pos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_0"))->GetValues();
+    //
+    // for (size_t i = 0; i < numKnots; ++i) {
+    //     std::cout << foot_pos[i * 6 + 0] << ", ";
+    //     std::cout << foot_pos[i * 6 + 1] << ", ";
+    //     std::cout << foot_pos[i * 6 + 2] << std::endl;
+    // }
+    // std::cout << std::endl;
+    //
+    // auto foot_force = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_0"))->GetValues();
+    //
+    // for (size_t i = 0; i < numKnots; ++i) {
+    //     std::cout << foot_force[i * 6 + 0] << ", ";
+    //     std::cout << foot_force[i * 6 + 1] << ", ";
+    //     std::cout << foot_force[i * 6 + 2] << std::endl;
+    // }
+    // std::cout << std::endl;
 
     return 0;
-}
-
-inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz)
-{
-    Eigen::Matrix3d I;
-    I << Ixx, -Ixy, -Ixz, -Ixy, Iyy, -Iyz, -Ixz, -Iyz, Izz;
-    return I;
-}
-
-void init_model(trajopt::SingleRigidBodyDynamicsModel& model)
-{
-    //   Anymal characteristics
-    Eigen::Matrix3d inertia = InertiaTensor(0.88201174, 1.85452968, 1.97309185, 0.00137526, 0.00062895, 0.00018922);
-    const double m_b = 30.4213964625;
-    const double x_nominal_b = 0.34;
-    const double y_nominal_b = 0.19;
-    const double z_nominal_b = -0.42;
-
-    const double dx = 0.15;
-    const double dy = 0.1;
-    const double dz = 0.1;
-
-    model.mass = m_b;
-    model.inertia = inertia;
-    model.numFeet = 4;
-
-    // Right fore
-    model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, -y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
-
-    // Left fore
-    model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
-
-    // Right hind
-    model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, -y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
-
-    // Left hind
-    model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
 }
 
 ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size)
