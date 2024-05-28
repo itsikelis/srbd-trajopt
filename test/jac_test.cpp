@@ -2,22 +2,23 @@
 
 #include <Eigen/Dense>
 
-#include <ifopt/constraint_set.h>
-#include <ifopt/ipopt_solver.h>
-#include <ifopt/problem.h>
 #include <iomanip>
 #include <memory>
 #include <numeric>
 #include <random>
 
-#include "../ifopt_sets/constraints/acceleration.hpp"
-#include "../ifopt_sets/constraints/dynamics.hpp"
-#include "../ifopt_sets/constraints/foot_constraints.hpp"
+#include <ifopt/constraint_set.h>
+#include <ifopt/ipopt_solver.h>
+#include <ifopt/problem.h>
 
-#include "../ifopt_sets/variables.hpp"
-#include "../utils/srbd.hpp"
-#include "../utils/terrain.hpp"
-#include "../utils/types.hpp"
+#include "../include/ifopt_sets/constraints/acceleration.hpp"
+#include "../include/ifopt_sets/constraints/dynamics.hpp"
+#include "../include/ifopt_sets/constraints/foot_constraints.hpp"
+
+#include "../include/ifopt_sets/variables.hpp"
+#include "../include/srbd/srbd.hpp"
+#include "../include/utils/terrain.hpp"
+#include "../include/utils/types.hpp"
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);

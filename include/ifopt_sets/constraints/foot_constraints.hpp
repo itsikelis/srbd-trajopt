@@ -2,7 +2,7 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "../../utils/srbd.hpp"
+#include "../../srbd/srbd.hpp"
 #include "../../utils/terrain.hpp"
 #include "../../utils/types.hpp"
 #include "../variables.hpp"
