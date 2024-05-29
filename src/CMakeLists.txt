@@ -6,7 +6,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR})
 # Link libraries and add compiler options
 target_link_libraries(${PROJECT_NAME} PRIVATE
   Eigen3::Eigen
-  robo_spline::robo_spline
   ifopt::ifopt_ipopt
 )
 

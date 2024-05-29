@@ -10,7 +10,7 @@ find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 # Find ifopt
 find_package(ifopt REQUIRED)
 # Find robo_spline
-find_package(robo_spline 1.0 REQUIRED)
+# find_package(robo_spline 1.0 REQUIRED)
 
 add_subdirectory(src)
 

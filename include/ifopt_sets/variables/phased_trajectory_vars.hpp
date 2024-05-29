@@ -2,13 +2,11 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <robo_spline/cubic_hermite_spline.hpp>
-#include <robo_spline/phased_trajectory.hpp>
-#include <robo_spline/trajectory.hpp>
 #include <string>
 
 #include <ifopt/variable_set.h>
-#include <robo_spline/trajectory.hpp>
+
+#include "include/robo_spline/phased_trajectory.hpp"
 
 namespace trajopt {
     class PhasedTrajectoryVars : public ifopt::VariableSet {

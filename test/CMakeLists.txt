@@ -6,7 +6,6 @@ target_include_directories(${PROJECT_NAME}_jac_test PRIVATE ${PROJECT_SOURCE_DIR
 # Link libraries and add compiler options
 target_link_libraries(${PROJECT_NAME}_jac_test PUBLIC
   Eigen3::Eigen
-  robo_spline::robo_spline
   ifopt::ifopt_ipopt
 )
 
