@@ -38,10 +38,10 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 20;
-    size_t numSamples = 24;
+    static constexpr size_t numKnots = 10;
+    size_t numSamples = 12;
 
-    double totalTime = 1.0;
+    double totalTime = 0.2;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
     auto polyTimes = Eigen::VectorXd(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
@@ -105,8 +105,8 @@ int main()
 
         nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numKnots));
-        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numKnots));
+        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
     }
 
     std::cout << "Solving.." << std::endl;

@@ -126,10 +126,10 @@ int main()
     auto footForceFrictionConstr = std::make_shared<trajopt::FrictionConeConstraints>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(footForceFrictionConstr);
 
-    auto implicitContactConstr = std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars0, footForceVars0, terrain, numKnots);
+    auto implicitContactConstr = std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars0, footForceVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(implicitContactConstr);
 
-    auto implicitVelocityConstr = std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars0, footForceVars0, terrain, numKnots);
+    auto implicitVelocityConstr = std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars0, footForceVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(implicitVelocityConstr);
 
     // Add rest of feet.
@@ -154,14 +154,14 @@ int main()
 
         nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numKnots));
-        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numKnots));
+        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
     }
 
     std::vector<std::string> var_set_names = {trajopt::BODY_POS_TRAJECTORY, trajopt::BODY_ROT_TRAJECTORY, trajopt::FOOT_POS + "_0", trajopt::FOOT_FORCE + "_0"};
     std::vector<std::shared_ptr<ifopt::ConstraintSet>> constr_sets = {dynamConstr, posAccConstr, rotAccConstr, footPosAccConstr, footBodyPosConstr, footForceFrictionConstr, implicitContactConstr, implicitVelocityConstr, footTerrainPosConstr};
 
-    test_jacobians(nlp, var_set_names, constr_sets, false);
+    test_jacobians(nlp, var_set_names, constr_sets, true);
 
     return 0;
 }
@@ -226,21 +226,22 @@ void test_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& v
                 std::cout << "Variable Set: " << var_set_name << ", \t";
                 std::cout << "Constraint Set: " << myConstr->GetName() << ", \t";
                 std::cout << "Norm of difference: " << err << std::endl;
-            }
-            if (viz) {
-                std::cout << std::setprecision(3);
-                for (int i = 0; i < myJac.rows(); i++) {
-                    std::cout << "#" << i << std::endl;
-                    std::cout << "  Approx: ";
-                    for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
-                        std::cout << std::setw(8) << std::fixed << myJac(i, colIdx) << " ";
-                    std::cout << std::endl;
-                    //   << myJac.col(colIdx).transpose() << std::endl;
-                    std::cout << "  Actual: ";
-                    for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
-                        std::cout << std::setw(8) << std::fixed << jacDense(i, colIdx) << " ";
-                    std::cout << std::endl;
-                    //   << jacDense.col(colIdx).transpose() << std::endl;
+
+                if (viz) {
+                    std::cout << std::setprecision(3);
+                    for (int i = 0; i < myJac.rows(); i++) {
+                        std::cout << "#" << i << std::endl;
+                        std::cout << "  Approx: ";
+                        for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                            std::cout << std::setw(8) << std::fixed << myJac(i, colIdx) << " ";
+                        std::cout << std::endl;
+                        //   << myJac.col(colIdx).transpose() << std::endl;
+                        std::cout << "  Actual: ";
+                        for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                            std::cout << std::setw(8) << std::fixed << jacDense(i, colIdx) << " ";
+                        std::cout << std::endl;
+                        //   << jacDense.col(colIdx).transpose() << std::endl;
+                    }
                 }
             }
         }

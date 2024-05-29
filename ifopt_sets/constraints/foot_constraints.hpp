@@ -170,12 +170,13 @@ namespace trajopt {
 
     class ImplicitVelocityConstraints : public ifopt::ConstraintSet {
     public:
-        ImplicitVelocityConstraints(const std::shared_ptr<TrajectoryVars>& pos_vars, const std::shared_ptr<TrajectoryVars>& force_vars, const trajopt::TerrainGrid<200, 200>& terrain, size_t num_knots)
-            : ConstraintSet(3 * num_knots, pos_vars->GetName() + "_implicit_velocity"),
+        ImplicitVelocityConstraints(const std::shared_ptr<TrajectoryVars>& pos_vars, const std::shared_ptr<TrajectoryVars>& force_vars, const trajopt::TerrainGrid<200, 200>& terrain, size_t num_samples, double sample_time)
+            : ConstraintSet(3 * num_samples, pos_vars->GetName() + "_implicit_velocity"),
               _posVarsName(pos_vars->GetName()),
               _forceVarsName(force_vars->GetName()),
               _terrain(terrain),
-              _numKnots(num_knots)
+              _numSamples(num_samples),
+              _sampleTime(sample_time)
         {
         }
 
@@ -183,16 +184,19 @@ namespace trajopt {
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
-            auto force_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName))->GetValues();
+            auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
-            for (size_t i = 0; i < _numKnots; ++i) {
-                Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
-                Eigen::VectorXd vel = pos_knots.segment(i * 6 + 3, 3);
-                Eigen::VectorXd force = force_knots.segment(i * 6, 3);
+            double dt = 0.;
+            for (size_t i = 0; i < _numSamples; ++i) {
+                Eigen::VectorXd pos = posVars->trajectoryEval(dt, 0);
+                Eigen::VectorXd vel = posVars->trajectoryEval(dt, 1);
+                Eigen::VectorXd force = forceVars->trajectoryEval(dt, 0);
 
                 double f_n = force.dot(_terrain.n(pos[0], pos[1]));
                 g.segment(i * 3, 3) = f_n * vel;
+
+                dt += _sampleTime;
             }
 
             return g;
@@ -206,52 +210,85 @@ namespace trajopt {
 
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
-            auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
-            auto force_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName))->GetValues();
+            auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
             if (var_set == _forceVarsName) {
-                for (size_t i = 0; i < _numKnots; ++i) {
-                    Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
-                    Eigen::VectorXd vel = pos_knots.segment(i * 6 + 3, 3);
+
+                double dt = 0.;
+                for (size_t i = 0; i < _numSamples; ++i) {
+                    Jacobian dForce = forceVars->trajectoryJacobian(dt, 0);
+
+                    Eigen::VectorXd pos = posVars->trajectoryEval(dt, 0);
+                    Eigen::VectorXd vel = posVars->trajectoryEval(dt, 1);
 
                     Eigen::Vector3d n = _terrain.n(pos[0], pos[1]);
 
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 0) = n[0] * vel[0];
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 1) = n[1] * vel[0];
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 2) = n[2] * vel[0];
+                    Jacobian mult(3, 3);
+                    for (size_t i = 0; i < 3; ++i) {
+                        auto res = vel[i] * n.transpose();
+                        for (size_t j = 0; j < 3; ++j) {
+                            mult.coeffRef(i, j) = res.coeff(j);
+                        }
+                    }
+                    // mult.row(1) = vel[1] * n.transpose();
+                    // mult.row(2) = vel[2] * n.transpose();
 
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 0) = n[0] * vel[1];
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 1) = n[1] * vel[1];
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 2) = n[2] * vel[1];
+                    // std::cout << vel[0] * n.transpose() << std::endl;
+                    // mult.coeffRef(1, 1) = n(1) * vel(1);
+                    // mult.coeffRef(2, 2) = n(2) * vel(2);
 
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 0) = n[0] * vel[2];
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 1) = n[1] * vel[2];
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 2) = n[2] * vel[2];
+                    jac_block.middleRows(i * 3, 3) = mult * dForce;
+
+                    // jac_block.middleRows(i * 3 + 0, 1) += n[0] * vel[0] * dForce.middleRows(0, 1);
+                    // jac_block.middleRows(i * 3 + 0, 1) += n[1] * vel[0] * dForce.middleRows(0, 1);
+                    // jac_block.middleRows(i * 3 + 0, 1) += n[2] * vel[0] * dForce.middleRows(0, 1);
+                    //
+                    // jac_block.middleRows(i * 3 + 1, 1) += n[0] * vel[1] * dForce.middleRows(1, 1);
+                    // jac_block.middleRows(i * 3 + 1, 1) += n[1] * vel[1] * dForce.middleRows(1, 1);
+                    // jac_block.middleRows(i * 3 + 1, 1) += n[2] * vel[1] * dForce.middleRows(1, 1);
+                    //
+                    // jac_block.middleRows(i * 3 + 2, 1) += n[0] * vel[2] * dForce.middleRows(2, 1);
+                    // jac_block.middleRows(i * 3 + 2, 1) += n[1] * vel[2] * dForce.middleRows(2, 1);
+                    // jac_block.middleRows(i * 3 + 2, 1) += n[2] * vel[2] * dForce.middleRows(2, 1);
+
+                    dt += _sampleTime;
                 }
             }
             else if (var_set == _posVarsName) {
-                for (size_t i = 0; i < _numKnots; ++i) {
-                    Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
-                    Eigen::VectorXd vel = pos_knots.segment(i * 6 + 3, 3);
-                    Eigen::VectorXd force = force_knots.segment(i * 6, 3);
+                double dt = 0.;
+                for (size_t i = 0; i < _numSamples; ++i) {
+                    Jacobian dVel = posVars->trajectoryJacobian(dt, 1);
 
-                    auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+                    // std::cout << "Rows: " << dVel.rows() << ", Cols: " << dVel.cols() << std::endl;
+
+                    Eigen::VectorXd pos = posVars->trajectoryEval(dt, 0);
+                    Eigen::VectorXd vel = posVars->trajectoryEval(dt, 1);
+                    Eigen::VectorXd force = forceVars->trajectoryEval(dt, 0);
 
                     double f_n = force.dot(_terrain.n(pos[0], pos[1]));
 
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 0) = force[0] * terrain_d[0] * vel[0];
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 1) = force[0] * terrain_d[0] * vel[1];
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 1) = force[0] * terrain_d[0] * vel[2];
+                    // Jacobian I3 = Jacobian(3, 3);
+                    // I3.setIdentity();
 
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 0) = force[1] * terrain_d[1] * vel[0];
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 1) = force[1] * terrain_d[1] * vel[1];
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 1) = force[1] * terrain_d[1] * vel[2];
+                    jac_block.middleRows(i * 3, 3) = f_n * dVel;
+
+                    // jac_block.middleCols(i * 3 + 2, 1) = jac_block.col(i * 3);
+                    // jac_block.middleCols(i * 3, 1) = Zer;
+
+                    // jac_block.middleRows(i * 3 + 0, 1) = force[0] * terrain_d[0] * vel[0] * dPos.middleRows(0, 1);
+                    // jac_block.middleRows(i * 3 + 1, 1) = force[0] * terrain_d[0] * vel[1] * dPos.middleRows(0, 1);
+                    // jac_block.middleRows(i * 3 + 2, 1) = force[0] * terrain_d[0] * vel[2] * dPos.middleRows(0, 1);
+
+                    // jac_block.middleRows(i * 3 + 0, 1) = force[1] * terrain_d[1] * vel[0] * dPos.middleRows(1, 1);
+                    // jac_block.middleRows(i * 3 + 1, 1) = force[1] * terrain_d[1] * vel[1] * dPos.middleRows(1, 1);
+                    // jac_block.middleRows(i * 3 + 2, 1) = force[1] * terrain_d[1] * vel[2] * dPos.middleRows(1, 1);
 
                     // jac_block.coeffRef(i + 0, i * 6 + 2) = force[2] * 0. * vel[2];
 
-                    jac_block.coeffRef(i * 3 + 0, i * 6 + 3) = f_n;
-                    jac_block.coeffRef(i * 3 + 1, i * 6 + 4) = f_n;
-                    jac_block.coeffRef(i * 3 + 2, i * 6 + 5) = f_n;
+                    // jac_block.middleRows(i * 3 + 0, 3) = f_n * dVel;
+
+                    dt += _sampleTime;
                 }
             }
         }
@@ -260,16 +297,19 @@ namespace trajopt {
         const std::string _posVarsName;
         const std::string _forceVarsName;
         const trajopt::TerrainGrid<200, 200> _terrain;
-        const size_t _numKnots;
+        const size_t _numSamples;
+        const double _sampleTime;
     };
 
     class ImplicitContactConstraints : public ifopt::ConstraintSet {
     public:
-        ImplicitContactConstraints(const std::shared_ptr<TrajectoryVars>& pos_vars, const std::shared_ptr<TrajectoryVars>& force_vars, const trajopt::TerrainGrid<200, 200>& terrain, size_t num_knots)
-            : ConstraintSet(num_knots, pos_vars->GetName() + "_implicit_contact"),
+        ImplicitContactConstraints(const std::shared_ptr<TrajectoryVars>& pos_vars, const std::shared_ptr<TrajectoryVars>& force_vars, const trajopt::TerrainGrid<200, 200>& terrain, size_t num_samples, double sample_time)
+            : ConstraintSet(num_samples, pos_vars->GetName() + "_implicit_contact"),
               _posVarsName(pos_vars->GetName()),
               _forceVarsName(force_vars->GetName()),
-              _terrain(terrain)
+              _terrain(terrain),
+              _numSamples(num_samples),
+              _sampleTime(sample_time)
         {
         }
 
@@ -277,22 +317,19 @@ namespace trajopt {
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            // std::cout << "##############" << std::endl;
-            // std::cout << GetName() << " num of phases: " << _numPhases << std::endl;
-            // std::cout << GetName() << " num of steps: " << _numSteps << std::endl;
-            // std::cout << GetName() << " num of swings: " << _numSwings << std::endl;
-            // std::cout << "##############" << std::endl;
+            auto pos_traj = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto force_traj = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
-            auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
-            auto force_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName))->GetValues();
-
+            double dt = 0.;
             for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
-                Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
-                Eigen::VectorXd force = force_knots.segment(i * 6, 3);
+                Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
+                Eigen::VectorXd force = force_traj->trajectoryEval(dt, 0);
 
                 double f_n = force.dot(_terrain.n(pos[0], pos[1]));
                 double phi = pos[2] - _terrain.height(pos[0], pos[1]);
                 g[i] = f_n * phi;
+
+                dt += _sampleTime;
             }
 
             return g;
@@ -306,32 +343,46 @@ namespace trajopt {
 
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
-            auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
-            auto force_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName))->GetValues();
+            auto pos_traj = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto force_traj = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
             if (var_set == _forceVarsName) {
+                double dt = 0.;
                 for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
-                    Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
+                    Jacobian dForce = force_traj->trajectoryJacobian(dt, 0);
+
+                    Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
                     auto phi = pos[2] - _terrain.height(pos[0], pos[1]);
 
                     Eigen::Vector3d n = _terrain.n(pos[0], pos[1]);
-                    jac_block.coeffRef(i, i * 6) = n[0] * phi;
-                    jac_block.coeffRef(i, i * 6 + 1) = n[1] * phi;
-                    jac_block.coeffRef(i, i * 6 + 2) = n[2] * phi;
+
+                    // TODO: Find a better way to do this.
+                    jac_block.middleRows(i, 1) += n[0] * phi * dForce.middleRows(0, 1);
+                    jac_block.middleRows(i, 1) += n[1] * phi * dForce.middleRows(1, 1);
+                    jac_block.middleRows(i, 1) += n[2] * phi * dForce.middleRows(2, 1);
+                    // jac_block.coeffRef(i, i * 6 + 1) = n[1] * phi;
+                    // jac_block.coeffRef(i, i * 6 + 2) = n[2] * phi;
+
+                    dt += _sampleTime;
                 }
             }
             else if (var_set == _posVarsName) {
+                double dt = 0.;
                 for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
-                    Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
-                    Eigen::VectorXd force = force_knots.segment(i * 6, 3);
+                    Jacobian dPos = force_traj->trajectoryJacobian(dt, 0);
+
+                    Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
+                    Eigen::VectorXd force = force_traj->trajectoryEval(dt, 0);
 
                     auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
 
                     double f_n = force.dot(_terrain.n(pos[0], pos[1]));
 
-                    jac_block.coeffRef(i, i * 6) = f_n * (-terrain_d[0]);
-                    jac_block.coeffRef(i, i * 6 + 1) = f_n * (-terrain_d[1]);
-                    jac_block.coeffRef(i, i * 6 + 2) = f_n * 1.;
+                    jac_block.middleRows(i, 1) = f_n * (-terrain_d[0]) * dPos.middleRows(0, 1);
+                    jac_block.middleRows(i, 1) = f_n * (-terrain_d[1]) * dPos.middleRows(1, 1);
+                    jac_block.middleRows(i, 1) = f_n * 1. * dPos.middleRows(2, 1);
+
+                    dt += _sampleTime;
                 }
             }
         }
@@ -340,6 +391,8 @@ namespace trajopt {
         const std::string _posVarsName;
         const std::string _forceVarsName;
         const trajopt::TerrainGrid<200, 200> _terrain;
+        const size_t _numSamples;
+        const double _sampleTime;
     };
 
     class FootBodyPosConstraints : public ifopt::ConstraintSet {
