@@ -11,14 +11,19 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "../include/ifopt_sets/constraints/acceleration.hpp"
-#include "../include/ifopt_sets/constraints/dynamics.hpp"
-#include "../include/ifopt_sets/constraints/foot_constraints.hpp"
+#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
+#include "include/ifopt_sets/variables/trajectory_vars.hpp"
+#include "include/srbd/srbd.hpp"
+#include "include/utils/terrain.hpp"
+#include "include/utils/types.hpp"
 
-#include "../include/ifopt_sets/variables.hpp"
-#include "../include/srbd/srbd.hpp"
-#include "../include/utils/terrain.hpp"
-#include "../include/utils/types.hpp"
+#include "include/ifopt_sets/constraints/body/acceleration.hpp"
+#include "include/ifopt_sets/constraints/body/dynamics.hpp"
+
+#include "include/ifopt_sets/constraints/feet/foot_body_distance.hpp"
+#include "include/ifopt_sets/constraints/feet/foot_terrain_distance.hpp"
+#include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
+#include "include/ifopt_sets/constraints/feet/phased_acceleration.hpp"
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);

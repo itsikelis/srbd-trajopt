@@ -2,9 +2,11 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "../../srbd/srbd.hpp"
-#include "../../utils/types.hpp"
-#include "../variables.hpp"
+#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
+#include "include/ifopt_sets/variables/trajectory_vars.hpp"
+
+#include "include/srbd/srbd.hpp"
+#include "include/utils/types.hpp"
 
 namespace trajopt {
     class DynamicsConstraint : public ifopt::ConstraintSet {

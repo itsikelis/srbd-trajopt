@@ -10,14 +10,19 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "include/ifopt_sets/variables.hpp"
+#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
+#include "include/ifopt_sets/variables/trajectory_vars.hpp"
 #include "include/srbd/srbd.hpp"
 #include "include/utils/terrain.hpp"
 #include "include/utils/types.hpp"
 
-#include "include/ifopt_sets/constraints/acceleration.hpp"
-#include "include/ifopt_sets/constraints/dynamics.hpp"
-#include "include/ifopt_sets/constraints/foot_constraints.hpp"
+#include "include/ifopt_sets/constraints/body/acceleration.hpp"
+#include "include/ifopt_sets/constraints/body/dynamics.hpp"
+
+#include "include/ifopt_sets/constraints/feet/foot_body_distance.hpp"
+#include "include/ifopt_sets/constraints/feet/foot_terrain_distance.hpp"
+#include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
+#include "include/ifopt_sets/constraints/feet/phased_acceleration.hpp"
 
 // Return 3D inertia tensor from 6D vector.
 inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
@@ -70,8 +75,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime);
-    nlp.AddConstraintSet(dynamConstr);
+    nlp.AddConstraintSet(std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime));
 
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
@@ -101,13 +105,13 @@ int main()
 
         nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
         // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyPosConstraints>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistance>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
     std::cout << "Solving.." << std::endl;
