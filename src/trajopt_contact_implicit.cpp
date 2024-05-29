@@ -19,6 +19,7 @@
 #include "include/ifopt_sets/constraints/feet/foot_body_distance.hpp"
 #include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
 
+#include "include/ifopt_sets/constraints/feet/foot_terrain_distance_implicit.hpp"
 #include "include/ifopt_sets/constraints/feet/implicit_contact.hpp"
 #include "include/ifopt_sets/constraints/feet/implicit_velocity.hpp"
 
@@ -101,13 +102,13 @@ int main()
         nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(footPosVars));
         // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainPosConstraints>(footPosVars, terrain, numKnots));
 
         auto footForceVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, polyTimes, footForceBounds);
         nlp.AddVariableSet(footForceVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
 
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistanceImplicit>(footPosVars, terrain, numKnots));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
     }

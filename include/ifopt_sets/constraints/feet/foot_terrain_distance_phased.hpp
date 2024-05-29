@@ -6,9 +6,9 @@
 #include "include/terrain/terrain_grid.hpp"
 
 namespace trajopt {
-    class FootTerrainDistance : public ifopt::ConstraintSet {
+    class FootTerrainDistancePhased : public ifopt::ConstraintSet {
     public:
-        FootTerrainDistance(const std::shared_ptr<PhasedTrajectoryVars>& vars,
+        FootTerrainDistancePhased(const std::shared_ptr<PhasedTrajectoryVars>& vars,
             const trajopt::TerrainGrid& terrain, size_t numSteps,
             size_t numSwings, std::vector<size_t> numKnotsPerSwing)
             : ConstraintSet(kSpecifyLater, vars->GetName() + "_foot_pos_terrain"),
