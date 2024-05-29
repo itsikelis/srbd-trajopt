@@ -3,13 +3,13 @@
 #include <ifopt/constraint_set.h>
 
 #include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
-#include "include/utils/terrain.hpp"
+#include "include/terrain/terrain_grid.hpp"
 
 namespace trajopt {
     class FootTerrainDistance : public ifopt::ConstraintSet {
     public:
         FootTerrainDistance(const std::shared_ptr<PhasedTrajectoryVars>& vars,
-            const trajopt::TerrainGrid<200, 200>& terrain, size_t numSteps,
+            const trajopt::TerrainGrid& terrain, size_t numSteps,
             size_t numSwings, std::vector<size_t> numKnotsPerSwing)
             : ConstraintSet(kSpecifyLater, vars->GetName() + "_foot_pos_terrain"),
               _varsName(vars->GetName()),
@@ -115,7 +115,7 @@ namespace trajopt {
 
     private:
         const std::string _varsName;
-        const trajopt::TerrainGrid<200, 200> _terrain;
+        const trajopt::TerrainGrid _terrain;
         const size_t _numPhases;
         const std::vector<size_t> _numKnotsPerSwing;
     };

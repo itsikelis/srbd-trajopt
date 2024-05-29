@@ -9,15 +9,26 @@
 #include <Eigen/Dense>
 
 namespace trajopt {
-    template <size_t _Rows, size_t _Cols>
     class TerrainGrid {
     public:
         using Grid = std::vector<double>;
 
     public:
-        TerrainGrid(double mu, size_t min_x, size_t min_y, size_t max_x, size_t max_y) : _mu(mu), _min_x(min_x), _min_y(min_y), _max_x(max_x), _max_y(max_y)
+        TerrainGrid(size_t rows,
+            size_t cols,
+            double mu,
+            size_t min_x,
+            size_t min_y,
+            size_t max_x,
+            size_t max_y) : _rows(rows),
+                            _cols(cols),
+                            _mu(mu),
+                            _min_x(min_x),
+                            _min_y(min_y),
+                            _max_x(max_x),
+                            _max_y(max_y)
         {
-            _grid.resize(_Rows * _Cols);
+            _grid.resize(_rows * _cols);
         }
 
         ~TerrainGrid() {}
@@ -37,11 +48,11 @@ namespace trajopt {
             }
 
             std::string line;
-            for (size_t i = 0; i < _Rows; ++i) {
+            for (size_t i = 0; i < _rows; ++i) {
                 std::getline(file, line);
                 auto tokens = split(line, ',');
 
-                _grid.insert(_grid.begin() + i * _Cols, tokens.begin(), tokens.end());
+                _grid.insert(_grid.begin() + i * _cols, tokens.begin(), tokens.end());
             }
 
             file.close();
@@ -49,13 +60,13 @@ namespace trajopt {
 
         inline double grid_height(size_t x_idx, size_t y_idx) const
         {
-            return _grid[x_idx * _Cols + y_idx];
+            return _grid[x_idx * _cols + y_idx];
         }
 
         inline double height(double x, double y) const
         {
-            double x_norm = _Rows * (x - static_cast<double>(_min_x)) / (static_cast<double>(_max_x) - static_cast<double>(_min_x));
-            double y_norm = _Cols * (y - _min_y) / (_max_y - _min_y);
+            double x_norm = _rows * (x - static_cast<double>(_min_x)) / (static_cast<double>(_max_x) - static_cast<double>(_min_x));
+            double y_norm = _cols * (y - _min_y) / (_max_y - _min_y);
 
             // std::cout << x_norm << "," << y_norm << std::endl;
 
@@ -83,8 +94,8 @@ namespace trajopt {
         {
             Eigen::Vector2d jac;
             // Determine interpolation indices.
-            double x_norm = _Rows * (x - static_cast<double>(_min_x)) / (static_cast<double>(_max_x) - static_cast<double>(_min_x));
-            double y_norm = _Cols * (y - _min_y) / (_max_y - _min_y);
+            double x_norm = _rows * (x - static_cast<double>(_min_x)) / (static_cast<double>(_max_x) - static_cast<double>(_min_x));
+            double y_norm = _cols * (y - _min_y) / (_max_y - _min_y);
             double x_1 = std::floor(x_norm);
             double x_2 = std::ceil(x_norm);
             double y_1 = std::floor(y_norm);
@@ -223,13 +234,13 @@ namespace trajopt {
 
         bool near_edge(double x, double y) const
         {
-            return (std::ceil(x) <= 0 || std::ceil(x) >= _Rows || std::ceil(y) <= 0 || std::ceil(y) >= _Cols);
+            return (std::ceil(x) <= 0 || std::ceil(x) >= _rows || std::ceil(y) <= 0 || std::ceil(y) >= _cols);
         }
 
         std::vector<double> split(const std::string& s, char delimiter) const
         {
             std::vector<double> tokens;
-            tokens.resize(_Cols);
+            tokens.resize(_cols);
             std::string token;
             std::istringstream token_stream(s);
             for (auto& item : tokens) {
@@ -240,6 +251,7 @@ namespace trajopt {
         }
 
     protected:
+        size_t _rows, _cols;
         double _mu;
         int _min_x, _min_y, _max_x, _max_y;
         Grid _grid;

@@ -1,6 +1,10 @@
 #pragma once
 
+#include <vector>
+
 #include <Eigen/Core>
+
+#include "include/utils/utils.hpp"
 
 namespace trajopt {
     struct SingleRigidBodyDynamicsModel {
@@ -22,6 +26,45 @@ namespace trajopt {
         std::vector<Eigen::Vector3d> feetMinBounds;
         std::vector<Eigen::Vector3d> feetMaxBounds;
     };
+
+    // Initialise and SRBD model with the Anybotics Anymal parameters.
+    inline void init_model_anymal(trajopt::SingleRigidBodyDynamicsModel& model)
+    {
+        //   Anymal characteristics
+        Eigen::Matrix3d inertia = inertiaTensor(0.88201174, 1.85452968, 1.97309185, 0.00137526, 0.00062895, 0.00018922);
+        const double m_b = 30.4213964625;
+        const double x_nominal_b = 0.34;
+        const double y_nominal_b = 0.19;
+        const double z_nominal_b = -0.42;
+
+        const double dx = 0.15;
+        const double dy = 0.1;
+        const double dz = 0.1;
+
+        model.mass = m_b;
+        model.inertia = inertia;
+        model.numFeet = 4;
+
+        // Right fore
+        model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, -y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
+
+        // Left fore
+        model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
+
+        // Right hind
+        model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, -y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
+
+        // Left hind
+        model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
+    }
 
     struct Terrain {
         Terrain() = default;

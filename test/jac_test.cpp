@@ -14,7 +14,7 @@
 #include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
 #include "include/ifopt_sets/variables/trajectory_vars.hpp"
 #include "include/srbd/srbd.hpp"
-#include "include/utils/terrain.hpp"
+#include "include/terrain/terrain_grid.hpp"
 #include "include/utils/types.hpp"
 
 #include "include/ifopt_sets/constraints/body/acceleration.hpp"
@@ -24,13 +24,6 @@
 #include "include/ifopt_sets/constraints/feet/foot_terrain_distance.hpp"
 #include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
 #include "include/ifopt_sets/constraints/feet/phased_acceleration.hpp"
-
-// Return 3D inertia tensor from 6D vector.
-inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz);
-
-void init_model(trajopt::SingleRigidBodyDynamicsModel& model);
-
-ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size);
 
 void test_jacobians(const ifopt::Problem& nlp, const std::string& var_set_name, const std::shared_ptr<ifopt::ConstraintSet>& myConstr);
 
@@ -53,11 +46,17 @@ int main()
     std::srand(std::time(0));
 
     trajopt::SingleRigidBodyDynamicsModel model;
-    init_model(model);
+    trajopt::init_model_anymal(model);
 
     // Create a Terrain Model (Select from predefined ones)
     // trajopt::Terrain terrain("");
-    trajopt::TerrainGrid<200, 200> terrain(0.7, 0, 0, 200, 200);
+    trajopt::TerrainGrid terrain(200, 200, 0.7, 0, 0, 200, 200);
+    std::vector<double> grid;
+    grid.resize(200 * 200);
+    for (auto& item : grid) {
+        item = 0.;
+    }
+    terrain.set_grid(grid);
 
     // Add variable sets.
     ifopt::Problem nlp;
@@ -75,7 +74,7 @@ int main()
     // Add body pos and rot var sets.
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5);
     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    ifopt::Component::VecBound bodyPosBounds = fillBoundVector(initBodyPos, targetBodyPos, 6 * numKnots);
+    ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
     auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
@@ -83,7 +82,7 @@ int main()
 
     Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
     Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
-    ifopt::Component::VecBound bodyRotBounds = fillBoundVector(initRotPos, targetRotPos, 6 * numKnots);
+    ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
     auto initBodyRotVals = Eigen::VectorXd(3 * 2 * numKnots);
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
     nlp.AddVariableSet(rotVars);
@@ -127,16 +126,16 @@ int main()
     nlp.AddConstraintSet(footPosAccConstr);
 
     // auto footPosTerrainConstr = std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars0, terrain, numSamples, sampleTime);
-    auto footPosTerrainConstr = std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars0, terrain, numPosSteps, 1, posKnotsPerSwing);
+    auto footPosTerrainConstr = std::make_shared<trajopt::FootTerrainDistance>(footPosVars0, terrain, numPosSteps, 1, posKnotsPerSwing);
     nlp.AddConstraintSet(footPosTerrainConstr);
 
-    auto footBodyPosConstr = std::make_shared<trajopt::FootBodyPosConstraints>(model, posVars, rotVars, footPosVars0, numSamples, sampleTime);
+    auto footBodyPosConstr = std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars0, numSamples, sampleTime);
     nlp.AddConstraintSet(footBodyPosConstr);
 
     auto footForceVars0 = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_0", initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, rspl::Phase::Swing);
     nlp.AddVariableSet(footForceVars0);
 
-    auto footForceFrictionConstr = std::make_shared<trajopt::FrictionConeConstraints>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
+    auto footForceFrictionConstr = std::make_shared<trajopt::FrictionCone>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(footForceFrictionConstr);
 
     // Add rest of feet.
@@ -146,13 +145,13 @@ int main()
 
         nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
         // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyPosConstraints>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistance>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeConstraints>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
     // Solve
@@ -185,70 +184,6 @@ int main()
     test_jacobians(nlp, var_set_name, constr_set);
 
     return 0;
-}
-
-inline Eigen::Matrix3d InertiaTensor(double Ixx, double Iyy, double Izz, double Ixy, double Ixz, double Iyz)
-{
-    Eigen::Matrix3d I;
-    I << Ixx, -Ixy, -Ixz, -Ixy, Iyy, -Iyz, -Ixz, -Iyz, Izz;
-    return I;
-}
-
-void init_model(trajopt::SingleRigidBodyDynamicsModel& model)
-{
-    //   Anymal characteristics
-    Eigen::Matrix3d inertia = InertiaTensor(0.88201174, 1.85452968, 1.97309185, 0.00137526, 0.00062895, 0.00018922);
-    const double m_b = 30.4213964625;
-    const double x_nominal_b = 0.34;
-    const double y_nominal_b = 0.19;
-    const double z_nominal_b = -0.42;
-
-    const double dx = 0.15;
-    const double dy = 0.1;
-    const double dz = 0.1;
-
-    model.mass = m_b;
-    model.inertia = inertia;
-    model.numFeet = 4;
-
-    // Right fore
-    model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, -y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
-
-    // Left fore
-    model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
-
-    // Right hind
-    model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, -y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
-
-    // Left hind
-    model.feetPoses.push_back(Eigen::Vector3d(-x_nominal_b, y_nominal_b, 0.));
-    model.feetMinBounds.push_back(Eigen::Vector3d(-x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
-    model.feetMaxBounds.push_back(Eigen::Vector3d(-x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
-}
-
-ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size)
-{
-    ifopt::Component::VecBound bounds(size, ifopt::NoBound);
-    bounds.at(0) = ifopt::Bounds(init[0], init[0]);
-    bounds.at(1) = ifopt::Bounds(init[1], init[1]);
-    bounds.at(2) = ifopt::Bounds(init[2], init[2]);
-    bounds.at(3) = ifopt::Bounds(init[0], init[0]);
-    bounds.at(4) = ifopt::Bounds(init[1], init[1]);
-    bounds.at(5) = ifopt::Bounds(init[2], init[2]);
-    bounds.at(size - 6) = ifopt::Bounds(target[0], target[0]);
-    bounds.at(size - 5) = ifopt::Bounds(target[1], target[1]);
-    bounds.at(size - 4) = ifopt::Bounds(target[2], target[2]);
-    bounds.at(size - 3) = ifopt::Bounds(target[0], target[0]);
-    bounds.at(size - 2) = ifopt::Bounds(target[1], target[1]);
-    bounds.at(size - 1) = ifopt::Bounds(target[2], target[2]);
-
-    return bounds;
 }
 
 /////// Jacobian Evaluation ////////

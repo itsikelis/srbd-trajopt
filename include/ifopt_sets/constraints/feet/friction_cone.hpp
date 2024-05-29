@@ -3,7 +3,7 @@
 #include <ifopt/constraint_set.h>
 
 #include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
-#include "include/utils/terrain.hpp"
+#include "include/terrain/terrain_grid.hpp"
 
 namespace trajopt {
     class FrictionCone : public ifopt::ConstraintSet {
@@ -11,7 +11,7 @@ namespace trajopt {
         FrictionCone(
             const std::shared_ptr<PhasedTrajectoryVars>& forceVars,
             const std::shared_ptr<PhasedTrajectoryVars>& posVars,
-            const trajopt::TerrainGrid<200, 200>& terrain,
+            const trajopt::TerrainGrid& terrain,
             size_t numSamples,
             double sampleTime)
             : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
@@ -109,6 +109,6 @@ namespace trajopt {
         const std::string _forceVarsName, _posVarsName;
         const size_t _numSamples;
         const double _sampleTime;
-        const trajopt::TerrainGrid<200, 200> _terrain;
+        const trajopt::TerrainGrid _terrain;
     };
 } // namespace trajopt
