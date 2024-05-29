@@ -7,6 +7,7 @@
 
 #include "include/srbd/srbd.hpp"
 #include "include/utils/types.hpp"
+#include "include/utils/utils.hpp"
 
 namespace trajopt {
     class DynamicsConstraint : public ifopt::ConstraintSet {
@@ -220,28 +221,6 @@ namespace trajopt {
                     }
                 }
             }
-        }
-
-        Jacobian eulerZYXToMatrix(const Eigen::Vector3d& eulerZYX) const
-        {
-            const double x = eulerZYX[2];
-            const double y = eulerZYX[1];
-            const double z = eulerZYX[0];
-
-            const double cx = std::cos(x);
-            const double sx = std::sin(x);
-
-            const double cy = std::cos(y);
-            const double sy = std::sin(y);
-
-            const double cz = std::cos(z);
-            const double sz = std::sin(z);
-
-            Eigen::Matrix3d R;
-            R << cy * cz, cz * sx * sy - cx * sz, sx * sz + cx * cz * sy, cy * sz,
-                cx * cz + sx * sy * sz, cx * sy * sz - cz * sx, -sy, cy * sx, cx * cy;
-
-            return R.sparseView(1., -1.);
         }
 
         Jacobian derivRotationVector(const Eigen::Vector3d& eulerZYX, const Eigen::Vector3d& v) const
