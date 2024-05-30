@@ -14,15 +14,16 @@
 #include "include/ifopt_sets/variables/trajectory_vars.hpp"
 #include "include/srbd/srbd.hpp"
 #include "include/terrain/terrain_grid.hpp"
+
+#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include "include/ifopt_sets/constraints/common/dynamics.hpp"
+
+#include "include/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp"
+#include "include/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp"
+#include "include/ifopt_sets/constraints/phased/friction_cone_phased.hpp"
+#include "include/ifopt_sets/constraints/phased/phased_acceleration.hpp"
+
 #include "include/utils/types.hpp"
-
-#include "include/ifopt_sets/constraints/body/acceleration.hpp"
-#include "include/ifopt_sets/constraints/body/dynamics.hpp"
-
-#include "include/ifopt_sets/constraints/feet/foot_body_distance.hpp"
-#include "include/ifopt_sets/constraints/feet/foot_terrain_distance_phased.hpp"
-#include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
-#include "include/ifopt_sets/constraints/feet/phased_acceleration.hpp"
 #include "include/utils/utils.hpp"
 
 int main()
@@ -99,12 +100,12 @@ int main()
         nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
         // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConePhased>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
     std::cout << "Solving.." << std::endl;

@@ -9,7 +9,7 @@ namespace trajopt {
     class FootTerrainDistanceImplicit : public ifopt::ConstraintSet {
     public:
         FootTerrainDistanceImplicit(const std::shared_ptr<TrajectoryVars>& pos_vars, const trajopt::TerrainGrid& terrain, size_t num_knots)
-            : ConstraintSet(num_knots, pos_vars->GetName() + "_terrain_pos"),
+            : ConstraintSet(num_knots, pos_vars->GetName() + "_foot_terrain_distance"),
               _posVarsName(pos_vars->GetName()),
               _terrain(terrain)
         {

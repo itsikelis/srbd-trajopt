@@ -2,15 +2,15 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
+#include "include/ifopt_sets/variables/trajectory_vars.hpp"
 #include "include/terrain/terrain_grid.hpp"
 
 namespace trajopt {
-    class FrictionCone : public ifopt::ConstraintSet {
+    class FrictionConeImplicit : public ifopt::ConstraintSet {
     public:
-        FrictionCone(
-            const std::shared_ptr<PhasedTrajectoryVars>& forceVars,
-            const std::shared_ptr<PhasedTrajectoryVars>& posVars,
+        FrictionConeImplicit(
+            const std::shared_ptr<TrajectoryVars>& forceVars,
+            const std::shared_ptr<TrajectoryVars>& posVars,
             const trajopt::TerrainGrid& terrain,
             size_t numSamples,
             double sampleTime)
@@ -25,8 +25,8 @@ namespace trajopt {
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-            auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+            auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
             double t = 0.;
             for (size_t i = 0; i < _numSamples; ++i) {
@@ -69,8 +69,8 @@ namespace trajopt {
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _forceVarsName) {
-                auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-                auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+                auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+                auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
                 double t = 0.;
                 for (size_t i = 0; i < _numSamples; ++i) {
@@ -105,7 +105,7 @@ namespace trajopt {
             }
         }
 
-    private:
+    protected:
         const std::string _forceVarsName, _posVarsName;
         const size_t _numSamples;
         const double _sampleTime;

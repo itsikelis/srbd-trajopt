@@ -1,10 +1,10 @@
 #include <chrono>
 #include <ctime>
 
-#include <Eigen/Dense>
-
 #include <iostream>
 #include <memory>
+
+#include <Eigen/Dense>
 
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
@@ -13,18 +13,17 @@
 #include "include/srbd/srbd.hpp"
 #include "include/terrain/terrain_grid.hpp"
 
-#include "include/ifopt_sets/constraints/body/acceleration.hpp"
-#include "include/ifopt_sets/constraints/body/dynamics.hpp"
+#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include "include/ifopt_sets/constraints/common/dynamics.hpp"
 
-#include "include/ifopt_sets/constraints/feet/foot_body_distance.hpp"
-#include "include/ifopt_sets/constraints/feet/friction_cone.hpp"
+#include "include/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp"
+#include "include/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp"
+#include "include/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp"
+#include "include/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp"
+#include "include/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp"
 
-#include "include/ifopt_sets/constraints/feet/foot_terrain_distance_implicit.hpp"
-#include "include/ifopt_sets/constraints/feet/implicit_contact.hpp"
-#include "include/ifopt_sets/constraints/feet/implicit_velocity.hpp"
-
-// Return 3D inertia tensor from 6D vector.
-ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size);
+#include "include/utils/types.hpp"
+#include "include/utils/utils.hpp"
 
 int main()
 {
@@ -55,7 +54,7 @@ int main()
     // Add body pos and rot var sets.
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    ifopt::Component::VecBound bodyPosBounds = fillBoundVector(initBodyPos, targetBodyPos, 6 * numKnots);
+    ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
     auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
@@ -63,7 +62,7 @@ int main()
 
     Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
     Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
-    ifopt::Component::VecBound bodyRotBounds = fillBoundVector(initRotPos, targetRotPos, 6 * numKnots);
+    ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
     auto initBodyRotVals = Eigen::VectorXd(3 * 2 * numKnots);
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
     nlp.AddVariableSet(rotVars);
@@ -77,7 +76,7 @@ int main()
 
     // size_t numPhasedKnots = numPosSteps + std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
     // size_t numPhasedVars = 3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
-    double max_force = 2. * model.mass * std::abs(model.gravity[2]);
+    double maxForce = 2. * model.mass * std::abs(model.gravity[2]);
     auto initFootPosVals = Eigen::VectorXd(3 * 2 * numKnots);
     auto initFootForceVals = Eigen::VectorXd(3 * 2 * numKnots);
 
@@ -86,7 +85,7 @@ int main()
 
     ifopt::Component::VecBound footPosBounds(6 * numKnots, ifopt::NoBound);
     // ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::NoBound);
-    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-max_force, max_force));
+    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-maxForce, maxForce));
 
     for (size_t i = 0; i < model.numFeet; ++i) {
         // Add initial and final positions for each foot.
@@ -100,14 +99,12 @@ int main()
         nlp.AddVariableSet(footPosVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(footPosVars));
-        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistance>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, polyTimes, footForceBounds);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
-
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConeImplicit>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistanceImplicit>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistanceImplicit>(footPosVars, terrain, numKnots));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
@@ -124,9 +121,9 @@ int main()
     auto t_start = std::chrono::high_resolution_clock::now();
 
     ipopt.Solve(nlp);
-    nlp.PrintCurrent();
-    const auto t_end = std::chrono::high_resolution_clock::now();
+    // nlp.PrintCurrent();
 
+    const auto t_end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration<double, std::milli>(t_end - t_start);
     std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
 
@@ -186,23 +183,4 @@ int main()
     // std::cout << std::endl;
 
     return 0;
-}
-
-ifopt::Component::VecBound fillBoundVector(Eigen::Vector3d init, Eigen::Vector3d target, size_t size)
-{
-    ifopt::Component::VecBound bounds(size, ifopt::NoBound);
-    bounds.at(0) = ifopt::Bounds(init[0], init[0]);
-    bounds.at(1) = ifopt::Bounds(init[1], init[1]);
-    bounds.at(2) = ifopt::Bounds(init[2], init[2]);
-    bounds.at(3) = ifopt::Bounds(init[0], init[0]);
-    bounds.at(4) = ifopt::Bounds(init[1], init[1]);
-    bounds.at(5) = ifopt::Bounds(init[2], init[2]);
-    bounds.at(size - 6) = ifopt::Bounds(target[0], target[0]);
-    bounds.at(size - 5) = ifopt::Bounds(target[1], target[1]);
-    bounds.at(size - 4) = ifopt::Bounds(target[2], target[2]);
-    bounds.at(size - 3) = ifopt::Bounds(target[0], target[0]);
-    bounds.at(size - 2) = ifopt::Bounds(target[1], target[1]);
-    bounds.at(size - 1) = ifopt::Bounds(target[2], target[2]);
-
-    return bounds;
 }
