@@ -16,8 +16,8 @@
 #include "include/terrain/terrain_grid.hpp"
 
 #include "include/ifopt_sets/constraints/common/acceleration.hpp"
-#include "include/ifopt_sets/constraints/common/dynamics.hpp"
 
+#include "include/ifopt_sets/constraints/phased/dynamics_phased.hpp"
 #include "include/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp"
 #include "include/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp"
 #include "include/ifopt_sets/constraints/phased/friction_cone_phased.hpp"
@@ -89,7 +89,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime);
+    auto dynamConstr = std::make_shared<trajopt::DynamicsPhased>(model, numSamples, sampleTime);
     nlp.AddConstraintSet(dynamConstr);
 
     auto posAccConstr = std::make_shared<trajopt::AccelerationConstraints>(posVars);

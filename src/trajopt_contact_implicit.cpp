@@ -14,8 +14,8 @@
 #include "include/terrain/terrain_grid.hpp"
 
 #include "include/ifopt_sets/constraints/common/acceleration.hpp"
-#include "include/ifopt_sets/constraints/common/dynamics.hpp"
 
+#include "include/ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp"
 #include "include/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp"
 #include "include/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp"
 #include "include/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp"
@@ -30,6 +30,7 @@ int main()
     trajopt::SingleRigidBodyDynamicsModel model;
     trajopt::init_model_anymal(model);
 
+    // TODO: Handle zero grids.
     trajopt::TerrainGrid terrain(200, 200, 0.7, -100, -100, 100, 100);
     std::vector<double> grid;
     grid.resize(200 * 200);
@@ -68,7 +69,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::DynamicsConstraint>(model, numSamples, sampleTime);
+    auto dynamConstr = std::make_shared<trajopt::DynamicsImplicit>(model, numSamples, sampleTime);
     nlp.AddConstraintSet(dynamConstr);
 
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
@@ -76,7 +77,7 @@ int main()
 
     // size_t numPhasedKnots = numPosSteps + std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
     // size_t numPhasedVars = 3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
-    double maxForce = 2. * model.mass * std::abs(model.gravity[2]);
+    double max_force = 2. * model.mass * std::abs(model.gravity[2]);
     auto initFootPosVals = Eigen::VectorXd(3 * 2 * numKnots);
     auto initFootForceVals = Eigen::VectorXd(3 * 2 * numKnots);
 
@@ -85,7 +86,7 @@ int main()
 
     ifopt::Component::VecBound footPosBounds(6 * numKnots, ifopt::NoBound);
     // ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::NoBound);
-    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-maxForce, maxForce));
+    ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::Bounds(-max_force, max_force));
 
     for (size_t i = 0; i < model.numFeet; ++i) {
         // Add initial and final positions for each foot.
@@ -99,6 +100,7 @@ int main()
         nlp.AddVariableSet(footPosVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(footPosVars));
+        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, polyTimes, footForceBounds);
         nlp.AddVariableSet(footForceVars);
@@ -121,9 +123,9 @@ int main()
     auto t_start = std::chrono::high_resolution_clock::now();
 
     ipopt.Solve(nlp);
-    // nlp.PrintCurrent();
-
+    nlp.PrintCurrent();
     const auto t_end = std::chrono::high_resolution_clock::now();
+
     auto duration = std::chrono::duration<double, std::milli>(t_end - t_start);
     std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
 

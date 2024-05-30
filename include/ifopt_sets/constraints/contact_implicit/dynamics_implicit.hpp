@@ -2,17 +2,15 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
 #include "include/ifopt_sets/variables/trajectory_vars.hpp"
-
 #include "include/srbd/srbd.hpp"
+
 #include "include/utils/types.hpp"
-#include "include/utils/utils.hpp"
 
 namespace trajopt {
-    class DynamicsConstraint : public ifopt::ConstraintSet {
+    class DynamicsImplicit : public ifopt::ConstraintSet {
     public:
-        DynamicsConstraint(
+        DynamicsImplicit(
             const SingleRigidBodyDynamicsModel& model,
             size_t numSamplePoints,
             double sampleTime)
@@ -39,10 +37,10 @@ namespace trajopt {
                 Eigen::Vector3d f = Eigen::Vector3d::Zero();
                 Eigen::Vector3d tau = Eigen::Vector3d::Zero();
                 for (unsigned int k = 0; k < _model.numFeet; k++) {
-                    auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
+                    auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
                     Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-                    auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
+                    auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
                     Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
                     Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
                     tau += (pawPos - bodyPos).cross(force);
@@ -96,8 +94,8 @@ namespace trajopt {
                         std::string fVar = FOOT_FORCE + "_" + std::to_string(k);
                         std::string pVar = FOOT_FORCE + "_" + std::to_string(k);
 
-                        Eigen::Vector3d pawPos = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar))->trajectoryEval(t, 0);
-                        Eigen::Vector3d f = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar))->trajectoryEval(t, 0);
+                        Eigen::Vector3d pawPos = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar))->trajectoryEval(t, 0);
+                        Eigen::Vector3d f = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar))->trajectoryEval(t, 0);
                         Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
 
                         derivTauSum -= derivSkewMultiplyVector((pawPos - bodyPos), f);
@@ -133,10 +131,10 @@ namespace trajopt {
 
                     Eigen::Vector3d tau = Eigen::Vector3d::Zero();
                     for (unsigned int k = 0; k < _model.numFeet; k++) {
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_FORCE + "_" + std::to_string(k)));
                         Eigen::Vector3d force = forceVars->trajectoryEval(t, 0);
 
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(FOOT_POS + "_" + std::to_string(k)));
                         Eigen::Vector3d bodyPos = positionVars->trajectoryEval(t, 0);
                         Eigen::Vector3d pawPos = pawPosVars->trajectoryEval(t, 0);
                         tau += (pawPos - bodyPos).cross(force);
@@ -171,8 +169,8 @@ namespace trajopt {
                     if (var_set == fVar) {
                         auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
                         auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar));
 
                         double t = 0.;
                         for (unsigned int i = 0; i < _numSamplePoints; i++) {
@@ -195,8 +193,8 @@ namespace trajopt {
                     else if (var_set == pVar) {
                         auto positionVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_POS_TRAJECTORY));
                         auto rotationVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(BODY_ROT_TRAJECTORY));
-                        auto pawPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(pVar));
-                        auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(fVar));
+                        auto pawPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(pVar));
+                        auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(fVar));
 
                         double t = 0.;
                         for (size_t i = 0; i < _numSamplePoints; ++i) {
@@ -221,6 +219,28 @@ namespace trajopt {
                     }
                 }
             }
+        }
+
+        Jacobian eulerZYXToMatrix(const Eigen::Vector3d& eulerZYX) const
+        {
+            const double x = eulerZYX[2];
+            const double y = eulerZYX[1];
+            const double z = eulerZYX[0];
+
+            const double cx = std::cos(x);
+            const double sx = std::sin(x);
+
+            const double cy = std::cos(y);
+            const double sy = std::sin(y);
+
+            const double cz = std::cos(z);
+            const double sz = std::sin(z);
+
+            Eigen::Matrix3d R;
+            R << cy * cz, cz * sx * sy - cx * sz, sx * sz + cx * cz * sy, cy * sz,
+                cx * cz + sx * sy * sz, cx * sy * sz - cz * sx, -sy, cy * sx, cx * cy;
+
+            return R.sparseView(1., -1.);
         }
 
         Jacobian derivRotationVector(const Eigen::Vector3d& eulerZYX, const Eigen::Vector3d& v) const
