@@ -9,21 +9,21 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/srbd/srbd.hpp"
-#include "include/terrain/terrain_grid.hpp"
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <srbd/srbd.hpp>
+#include <terrain/terrain_grid.hpp>
 
-#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include <ifopt_sets/constraints/common/acceleration.hpp>
 
-#include "include/ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp"
+#include <ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
+#include <ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
 
-#include "include/utils/types.hpp"
-#include "include/utils/utils.hpp"
+#include <utils/types.hpp>
+#include <utils/utils.hpp>
 
 int main()
 {
@@ -31,7 +31,7 @@ int main()
     trajopt::init_model_anymal(model);
 
     // TODO: Handle zero grids.
-    trajopt::TerrainGrid terrain(200, 200, 0.7, -100, -100, 100, 100);
+    trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
     std::vector<double> grid;
     grid.resize(200 * 200);
     for (auto& item : grid) {
@@ -42,10 +42,10 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 10;
-    size_t numSamples = 12;
+    static constexpr size_t numKnots = 20;
+    size_t numSamples = 20;
 
-    double totalTime = 0.2;
+    double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
     auto polyTimes = Eigen::VectorXd(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {

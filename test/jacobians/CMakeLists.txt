@@ -1,6 +1,6 @@
 add_executable(jac_test_phased jac_test_phased.cpp)
 
-target_include_directories(jac_test_phased PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(jac_test_phased PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 # Link libraries and add compiler options
 target_link_libraries(jac_test_phased PUBLIC
@@ -15,7 +15,7 @@ target_compile_definitions(jac_test_phased PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOU
 # Contact implicit Jacobian tests
 add_executable(jac_test_implicit jac_test_implicit.cpp)
 
-target_include_directories(jac_test_implicit PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(jac_test_implicit PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 # Link libraries and add compiler options
 target_link_libraries(jac_test_implicit PUBLIC

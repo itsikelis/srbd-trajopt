@@ -10,21 +10,21 @@
 
 #include <Eigen/Dense>
 
-#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/srbd/srbd.hpp"
-#include "include/terrain/terrain_grid.hpp"
+#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <srbd/srbd.hpp>
+#include <terrain/terrain_grid.hpp>
 
-#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include <ifopt_sets/constraints/common/acceleration.hpp>
 
-#include "include/ifopt_sets/constraints/phased/dynamics_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/friction_cone_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/phased_acceleration.hpp"
+#include <ifopt_sets/constraints/phased/dynamics_phased.hpp>
+#include <ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
+#include <ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
+#include <ifopt_sets/constraints/phased/friction_cone_phased.hpp>
+#include <ifopt_sets/constraints/phased/phased_acceleration.hpp>
 
-#include "include/utils/types.hpp"
-#include "include/utils/utils.hpp"
+#include <utils/types.hpp>
+#include <utils/utils.hpp>
 
 void test_jacobians(const ifopt::Problem& nlp, const std::string& var_set_name, const std::shared_ptr<ifopt::ConstraintSet>& myConstr);
 

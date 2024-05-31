@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "include/robo_spline/trajectory.hpp"
+#include <robo_spline/trajectory.hpp>
 
 #include <ifopt/variable_set.h>
 

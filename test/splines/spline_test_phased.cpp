@@ -10,6 +10,8 @@
 #include <robo_spline/phased_trajectory.hpp>
 #include <robo_spline/trajectory.hpp>
 
+namespace rspl = trajopt::rspl;
+
 static constexpr size_t Dim = 3;
 static constexpr double eps = 1e-6;
 static constexpr size_t NumStancePhases = 3;

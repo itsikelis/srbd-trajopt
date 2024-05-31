@@ -4,9 +4,9 @@
 
 #include <cassert>
 
-#include "include/robo_spline/component.hpp"
-#include "include/robo_spline/cubic_hermite_spline.hpp"
-#include "include/robo_spline/types.hpp"
+#include <robo_spline/component.hpp>
+#include <robo_spline/cubic_hermite_spline.hpp>
+#include <robo_spline/types.hpp>
 
 namespace trajopt::rspl {
     template <size_t _Dim>
@@ -165,7 +165,7 @@ namespace trajopt::rspl {
         size_t _num_knot_points{0};
         std::vector<std::shared_ptr<Spline>> _splines;
 
-        VecD _last_pos;
-        VecD _last_vel;
+        VecD _last_pos{VecD::Zero()};
+        VecD _last_vel{VecD::Zero()};
     };
 } // namespace trajopt::rspl

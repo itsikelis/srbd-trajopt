@@ -2,7 +2,7 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
+#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
 
 namespace trajopt {
     class PhasedAccelerationConstraints : public ifopt::ConstraintSet {

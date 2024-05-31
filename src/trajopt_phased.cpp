@@ -10,28 +10,28 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "include/ifopt_sets/variables/phased_trajectory_vars.hpp"
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/srbd/srbd.hpp"
-#include "include/terrain/terrain_grid.hpp"
+#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <srbd/srbd.hpp>
+#include <terrain/terrain_grid.hpp>
 
-#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include <ifopt_sets/constraints/common/acceleration.hpp>
 
-#include "include/ifopt_sets/constraints/phased/dynamics_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/friction_cone_phased.hpp"
-#include "include/ifopt_sets/constraints/phased/phased_acceleration.hpp"
+#include <ifopt_sets/constraints/phased/dynamics_phased.hpp>
+#include <ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
+#include <ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
+#include <ifopt_sets/constraints/phased/friction_cone_phased.hpp>
+#include <ifopt_sets/constraints/phased/phased_acceleration.hpp>
 
-#include "include/utils/types.hpp"
-#include "include/utils/utils.hpp"
+#include <utils/types.hpp>
+#include <utils/utils.hpp>
 
 int main()
 {
     trajopt::SingleRigidBodyDynamicsModel model;
     trajopt::init_model_anymal(model);
 
-    trajopt::TerrainGrid terrain(200, 200, 0.7, -100, -100, 100, 100);
+    trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
     std::vector<double> grid;
     grid.resize(200 * 200);
     for (auto& item : grid) {
@@ -42,8 +42,8 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 50;
-    size_t numSamples = 50;
+    static constexpr size_t numKnots = 20;
+    size_t numSamples = 20;
 
     double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
@@ -114,6 +114,7 @@ int main()
     // ipopt.SetOption("jacobian_approximation", "finite-difference-values");
     ipopt.SetOption("max_cpu_time", 1e50);
     ipopt.SetOption("max_iter", static_cast<int>(1000));
+    ipopt.SetOption("print_level", 8);
 
     // Solve.
     auto t_start = std::chrono::high_resolution_clock::now();

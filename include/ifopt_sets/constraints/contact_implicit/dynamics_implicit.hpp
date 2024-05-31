@@ -2,10 +2,10 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/srbd/srbd.hpp"
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <srbd/srbd.hpp>
 
-#include "include/utils/types.hpp"
+#include <utils/types.hpp>
 
 namespace trajopt {
     class DynamicsImplicit : public ifopt::ConstraintSet {

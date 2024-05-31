@@ -3,9 +3,9 @@
 #include <cassert>
 #include <numeric>
 
-#include "include/robo_spline/component.hpp"
-#include "include/robo_spline/trajectory.hpp"
-#include "include/robo_spline/types.hpp"
+#include <robo_spline/component.hpp>
+#include <robo_spline/trajectory.hpp>
+#include <robo_spline/types.hpp>
 
 namespace trajopt::rspl {
     template <size_t _Dim>

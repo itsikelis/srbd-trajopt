@@ -6,7 +6,7 @@
 
 #include <ifopt/variable_set.h>
 
-#include "include/robo_spline/phased_trajectory.hpp"
+#include <robo_spline/phased_trajectory.hpp>
 
 namespace trajopt {
     class PhasedTrajectoryVars : public ifopt::VariableSet {

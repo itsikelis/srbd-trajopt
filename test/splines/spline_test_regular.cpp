@@ -9,6 +9,8 @@
 #include <robo_spline/cubic_hermite_spline.hpp>
 #include <robo_spline/trajectory.hpp>
 
+namespace rspl = trajopt::rspl;
+
 static constexpr size_t NumKnotPoints = 5;
 static constexpr size_t Dim = 3;
 static constexpr double eps = 1e-6;

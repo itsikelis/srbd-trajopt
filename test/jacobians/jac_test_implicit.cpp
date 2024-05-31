@@ -9,21 +9,21 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/srbd/srbd.hpp"
-#include "include/terrain/terrain_grid.hpp"
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <srbd/srbd.hpp>
+#include <terrain/terrain_grid.hpp>
 
-#include "include/ifopt_sets/constraints/common/acceleration.hpp"
+#include <ifopt_sets/constraints/common/acceleration.hpp>
 
-#include "include/ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp"
-#include "include/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp"
+#include <ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
+#include <ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
+#include <ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
 
-#include "include/utils/types.hpp"
-#include "include/utils/utils.hpp"
+#include <utils/types.hpp>
+#include <utils/utils.hpp>
 
 // Return 3D inertia tensor from 6D vector.
 

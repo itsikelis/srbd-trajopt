@@ -2,8 +2,8 @@
 
 #include <ifopt/constraint_set.h>
 
-#include "include/ifopt_sets/variables/trajectory_vars.hpp"
-#include "include/terrain/terrain_grid.hpp"
+#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <terrain/terrain_grid.hpp>
 
 namespace trajopt {
     class ImplicitVelocityConstraints : public ifopt::ConstraintSet {

@@ -4,7 +4,7 @@
 
 #include <Eigen/Core>
 
-#include "include/utils/utils.hpp"
+#include <utils/utils.hpp>
 
 namespace trajopt {
     struct SingleRigidBodyDynamicsModel {
