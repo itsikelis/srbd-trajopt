@@ -114,7 +114,6 @@ int main()
     // ipopt.SetOption("jacobian_approximation", "finite-difference-values");
     ipopt.SetOption("max_cpu_time", 1e50);
     ipopt.SetOption("max_iter", static_cast<int>(1000));
-    ipopt.SetOption("print_level", 8);
 
     // Solve.
     auto t_start = std::chrono::high_resolution_clock::now();
