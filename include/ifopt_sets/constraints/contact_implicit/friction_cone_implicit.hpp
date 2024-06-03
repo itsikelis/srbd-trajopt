@@ -15,11 +15,13 @@ namespace trajopt {
             size_t numSamples,
             double sampleTime)
             : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
-              _forceVarsName(forceVars->GetName()),
               _posVarsName(posVars->GetName()),
+              _forceVarsName(forceVars->GetName()),
+              _terrain(terrain),
               _numSamples(numSamples),
-              _sampleTime(sampleTime),
-              _terrain(terrain) {}
+              _sampleTime(sampleTime)
+        {
+        }
 
         VectorXd GetValues() const override
         {
@@ -106,9 +108,10 @@ namespace trajopt {
         }
 
     protected:
-        const std::string _forceVarsName, _posVarsName;
+        const std::string _posVarsName;
+        const std::string _forceVarsName;
+        const trajopt::TerrainGrid _terrain;
         const size_t _numSamples;
         const double _sampleTime;
-        const trajopt::TerrainGrid _terrain;
     };
 } // namespace trajopt

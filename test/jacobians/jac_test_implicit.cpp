@@ -13,9 +13,11 @@
 #include <srbd/srbd.hpp>
 #include <terrain/terrain_grid.hpp>
 
-#include <ifopt_sets/constraints/common/acceleration.hpp>
+#include <ifopt_sets/cost/min_effort.hpp>
 
-#include <ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp>
+#include <ifopt_sets/constraints/common/acceleration.hpp>
+#include <ifopt_sets/constraints/common/dynamics.hpp>
+
 #include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
 #include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
 #include <ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
@@ -27,7 +29,7 @@
 
 // Return 3D inertia tensor from 6D vector.
 
-void test_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::vector<std::shared_ptr<ifopt::ConstraintSet>>& constr_sets, bool viz);
+void test_constr_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::vector<std::shared_ptr<ifopt::ConstraintSet>>& constr_sets, double tol, bool viz);
 
 Eigen::VectorXd random_uniform_vector(size_t rows, double lower, double upper)
 {
@@ -90,7 +92,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::DynamicsImplicit>(model, numSamples, sampleTime);
+    auto dynamConstr = std::make_shared<trajopt::Dynamics<trajopt::TrajectoryVars>>(model, numSamples, sampleTime);
     nlp.AddConstraintSet(dynamConstr);
 
     auto posAccConstr = std::make_shared<trajopt::AccelerationConstraints>(posVars);
@@ -137,6 +139,10 @@ int main()
     auto implicitVelocityConstr = std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars0, footForceVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(implicitVelocityConstr);
 
+    // Add cost set
+    auto minEffortCost = std::make_shared<trajopt::MinEffort<trajopt::TrajectoryVars>>(footPosVars0, numKnots);
+    nlp.AddCostSet(minEffortCost);
+
     // Add rest of feet.
     for (size_t i = 1; i < model.numFeet; ++i) {
         // Add initial and final positions for each foot.
@@ -161,23 +167,25 @@ int main()
 
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
+
+        // Add cost set
+        nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::TrajectoryVars>>(footPosVars, numKnots));
     }
 
-    std::vector<std::string> var_set_names = {trajopt::BODY_POS_TRAJECTORY, trajopt::BODY_ROT_TRAJECTORY, trajopt::FOOT_POS + "_0", trajopt::FOOT_FORCE + "_0"};
-    std::vector<std::shared_ptr<ifopt::ConstraintSet>> constr_sets = {dynamConstr, posAccConstr, rotAccConstr, footPosAccConstr, footBodyPosConstr, footForceFrictionConstr, implicitContactConstr, implicitVelocityConstr, footTerrainPosConstr};
+    std::vector<std::string> var_set_names = {trajopt::BODY_POS_TRAJECTORY, trajopt::BODY_ROT_TRAJECTORY, trajopt::FOOT_POS + "_0", trajopt::FOOT_FORCE + "_0", trajopt::FOOT_POS + "_1", trajopt::FOOT_FORCE + "_1", trajopt::FOOT_POS + "_2", trajopt::FOOT_FORCE + "_2", trajopt::FOOT_POS + "_3", trajopt::FOOT_FORCE + "_3"};
+    std::vector<std::shared_ptr<ifopt::ConstraintSet>> constr_sets = {minEffortCost, dynamConstr, posAccConstr, rotAccConstr, footPosAccConstr, footBodyPosConstr, footForceFrictionConstr, implicitContactConstr, implicitVelocityConstr, footTerrainPosConstr};
 
-    test_jacobians(nlp, var_set_names, constr_sets, true);
+    test_constr_jacobians(nlp, var_set_names, constr_sets, 1e-12, true);
 
     return 0;
 }
 
 /////// Jacobian Evaluation ////////
-void test_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::vector<std::shared_ptr<ifopt::ConstraintSet>>& constr_sets, bool viz)
+void test_constr_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::vector<std::shared_ptr<ifopt::ConstraintSet>>& constr_sets, double tol, bool viz)
 {
-    for (auto& var_set_name : var_set_names) {
-        auto myVars = nlp.GetOptVariables()->GetComponent(var_set_name);
-
-        for (auto& myConstr : constr_sets) {
+    for (auto& myConstr : constr_sets) {
+        for (auto& var_set_name : var_set_names) {
+            auto myVars = nlp.GetOptVariables()->GetComponent(var_set_name);
 
             // Get Calculated Jacobian.
             auto jac = Eigen::SparseMatrix<double, Eigen::RowMajor>(myConstr->GetRows(), myVars->GetRows());
@@ -208,9 +216,9 @@ void test_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& v
 
             // Test if differences are near zero.
             double err = abs((myJac - jacDense).norm());
-            if (err > 1e-4) {
-                std::cout << "Variable Set: " << var_set_name << ", \t";
+            if (err > tol) {
                 std::cout << "Constraint Set: " << myConstr->GetName() << ", \t";
+                std::cout << "Variable Set: " << var_set_name << ", \t";
                 std::cout << "Norm of difference: " << err << std::endl;
 
                 if (viz) {

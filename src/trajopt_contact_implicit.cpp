@@ -1,6 +1,5 @@
 #include <chrono>
 #include <ctime>
-
 #include <iostream>
 #include <memory>
 
@@ -13,9 +12,11 @@
 #include <srbd/srbd.hpp>
 #include <terrain/terrain_grid.hpp>
 
-#include <ifopt_sets/constraints/common/acceleration.hpp>
+#include <ifopt_sets/cost/min_effort.hpp>
 
-#include <ifopt_sets/constraints/contact_implicit/dynamics_implicit.hpp>
+#include <ifopt_sets/constraints/common/acceleration.hpp>
+#include <ifopt_sets/constraints/common/dynamics.hpp>
+
 #include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
 #include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
 #include <ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
@@ -69,7 +70,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::DynamicsImplicit>(model, numSamples, sampleTime);
+    auto dynamConstr = std::make_shared<trajopt::Dynamics<trajopt::TrajectoryVars>>(model, numSamples, sampleTime);
     nlp.AddConstraintSet(dynamConstr);
 
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
@@ -100,7 +101,6 @@ int main()
         nlp.AddVariableSet(footPosVars);
 
         nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(footPosVars));
-        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
 
         auto footForceVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, polyTimes, footForceBounds);
         nlp.AddVariableSet(footForceVars);
@@ -110,6 +110,9 @@ int main()
         nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistanceImplicit>(footPosVars, terrain, numKnots));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitContactConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
         nlp.AddConstraintSet(std::make_shared<trajopt::ImplicitVelocityConstraints>(footPosVars, footForceVars, terrain, numSamples, sampleTime));
+
+        // Add cost set
+        nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::TrajectoryVars>>(footForceVars, numKnots));
     }
 
     std::cout << "Solving.." << std::endl;

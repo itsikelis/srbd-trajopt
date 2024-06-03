@@ -1,11 +1,10 @@
 #include <chrono>
 #include <ctime>
-
-#include <Eigen/Dense>
-
 #include <iostream>
 #include <memory>
 #include <numeric>
+
+#include <Eigen/Dense>
 
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
@@ -16,8 +15,8 @@
 #include <terrain/terrain_grid.hpp>
 
 #include <ifopt_sets/constraints/common/acceleration.hpp>
+#include <ifopt_sets/constraints/common/dynamics.hpp>
 
-#include <ifopt_sets/constraints/phased/dynamics_phased.hpp>
 #include <ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
 #include <ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
 #include <ifopt_sets/constraints/phased/friction_cone_phased.hpp>
@@ -69,7 +68,7 @@ int main()
     nlp.AddVariableSet(rotVars);
 
     // // Add regular constraint sets.
-    nlp.AddConstraintSet(std::make_shared<trajopt::DynamicsPhased>(model, numSamples, sampleTime));
+    nlp.AddConstraintSet(std::make_shared<trajopt::Dynamics<trajopt::PhasedTrajectoryVars>>(model, numSamples, sampleTime));
 
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
     nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
