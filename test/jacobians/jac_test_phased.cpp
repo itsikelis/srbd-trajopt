@@ -17,10 +17,10 @@
 
 #include <trajopt/ifopt_sets/constraints/common/acceleration.hpp>
 #include <trajopt/ifopt_sets/constraints/common/dynamics.hpp>
+#include <trajopt/ifopt_sets/constraints/common/friction_cone.hpp>
 
 #include <trajopt/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
 #include <trajopt/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
-#include <trajopt/ifopt_sets/constraints/phased/friction_cone_phased.hpp>
 #include <trajopt/ifopt_sets/constraints/phased/phased_acceleration.hpp>
 
 #include <trajopt/utils/types.hpp>
@@ -136,7 +136,7 @@ int main()
     auto footForceVars0 = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_0", initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
     nlp.AddVariableSet(footForceVars0);
 
-    auto footForceFrictionConstr = std::make_shared<trajopt::FrictionConePhased>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
+    auto footForceFrictionConstr = std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
     nlp.AddConstraintSet(footForceFrictionConstr);
 
     // Add rest of feet.
@@ -152,7 +152,7 @@ int main()
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConePhased>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
     // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;

@@ -17,10 +17,10 @@
 
 #include <trajopt/ifopt_sets/constraints/common/acceleration.hpp>
 #include <trajopt/ifopt_sets/constraints/common/dynamics.hpp>
+#include <trajopt/ifopt_sets/constraints/common/friction_cone.hpp>
 
 #include <trajopt/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
 #include <trajopt/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
-#include <trajopt/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
 #include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
 #include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
 
@@ -139,7 +139,7 @@ int main()
         nlp.AddConstraintSet(footDistTerrainConstr);
         test_constr_jacobians(nlp, VarSetNames, footDistTerrainConstr, Tolerance, Viz);
 
-        auto frictionConeConstr = std::make_shared<trajopt::FrictionConeImplicit>(footForceVars, footPosVars, terrain, numSamples, sampleTime);
+        auto frictionConeConstr = std::make_shared<trajopt::FrictionCone<trajopt::TrajectoryVars>>(footForceVars, footPosVars, terrain, numSamples, sampleTime);
         nlp.AddConstraintSet(frictionConeConstr);
         test_constr_jacobians(nlp, VarSetNames, frictionConeConstr, Tolerance, Viz);
 

@@ -1,6 +1,6 @@
 add_executable(test_terrain test_terrain.cpp)
 
-target_include_directories(test_terrain PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(test_terrain PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 # Link libraries and add compiler options
 target_link_libraries(test_terrain PUBLIC

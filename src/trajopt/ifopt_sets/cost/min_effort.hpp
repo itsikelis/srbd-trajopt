@@ -13,10 +13,7 @@ namespace trajopt {
     template <typename TrajectoryVarsType>
     class MinEffort : public ifopt::CostTerm {
     public:
-        MinEffort(const std::shared_ptr<TrajectoryVarsType>& footForceVars, size_t numKnots)
-            : CostTerm(footForceVars->GetName() + "cost_min_effort"),
-              _varSetName(footForceVars->GetName()),
-              _numKnots(numKnots) {}
+        MinEffort(const std::shared_ptr<TrajectoryVarsType>& footForceVars, size_t numKnots) : CostTerm(footForceVars->GetName() + "cost_min_effort"), _varSetName(footForceVars->GetName()), _numKnots(numKnots) {}
 
         double GetCost() const override
         {

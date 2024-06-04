@@ -12,7 +12,7 @@ namespace trajopt::rspl {
     template <size_t _Dim>
     class Trajectory : public Component<_Dim> {
     public:
-        using VecD = Component<_Dim>::VecD;
+        using VecD = typename Component<_Dim>::VecD;
         using Spline = CubicHermiteSpline<_Dim>;
 
     public:
