@@ -38,6 +38,13 @@ namespace trajopt {
             _grid = new_grid;
         }
 
+        void set_zero()
+        {
+            for (auto& item : _grid) {
+                item = 0.;
+            }
+        }
+
         void read_from_csv(const std::string& filename)
         {
             std::ifstream file(filename);

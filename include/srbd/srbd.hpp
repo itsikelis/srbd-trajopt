@@ -9,8 +9,7 @@
 namespace trajopt {
     struct SingleRigidBodyDynamicsModel {
         SingleRigidBodyDynamicsModel() = default;
-        SingleRigidBodyDynamicsModel(double m, Eigen::Matrix3d I, double nFeet,
-            std::vector<Eigen::Vector3d> fPoses)
+        SingleRigidBodyDynamicsModel(double m, Eigen::Matrix3d I, double nFeet, std::vector<Eigen::Vector3d> fPoses)
             : mass(m), inertia(I), numFeet(nFeet), feetPoses(fPoses)
         {
             inertia_inv = inertia.inverse();
@@ -27,8 +26,43 @@ namespace trajopt {
         std::vector<Eigen::Vector3d> feetMaxBounds;
     };
 
+    inline void init_model_biped(SingleRigidBodyDynamicsModel& model)
+    {
+        double W = 0.4;
+        double D = 0.4;
+        double H = 0.1;
+        double m_b = 5; // 0.5kg
+        // Inertia Matrix (https://en.wikipedia.org/wiki/List_of_moments_of_inertia)
+        Eigen::Matrix3d I = Eigen::Matrix3d::Zero();
+        I(0, 0) = (1. / 12.) * m_b * (H * H + W * W);
+        I(1, 1) = (1. / 12.) * m_b * (D * D + H * H);
+        I(2, 2) = (1. / 12.) * m_b * (W * W + D * D);
+
+        model.mass = m_b;
+        model.inertia = I;
+        model.numFeet = 2;
+
+        const double dx = 0.15;
+        const double dy = 0.1;
+        const double dz = 0.1;
+
+        const double x_nominal_b = 0.15;
+        const double y_nominal_b = 0.0;
+        const double z_nominal_b = -0.5;
+
+        // Right
+        model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, -y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, -y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, -y_nominal_b + dy, z_nominal_b + dz));
+
+        // Left
+        model.feetPoses.push_back(Eigen::Vector3d(x_nominal_b, y_nominal_b, 0.));
+        model.feetMinBounds.push_back(Eigen::Vector3d(x_nominal_b - dx, y_nominal_b - dy, z_nominal_b - dz));
+        model.feetMaxBounds.push_back(Eigen::Vector3d(x_nominal_b + dx, y_nominal_b + dy, z_nominal_b + dz));
+    }
+
     // Initialise and SRBD model with the Anybotics Anymal parameters.
-    inline void init_model_anymal(trajopt::SingleRigidBodyDynamicsModel& model)
+    inline void init_model_anymal(SingleRigidBodyDynamicsModel& model)
     {
         //   Anymal characteristics
         Eigen::Matrix3d inertia = inertiaTensor(0.88201174, 1.85452968, 1.97309185, 0.00137526, 0.00062895, 0.00018922);

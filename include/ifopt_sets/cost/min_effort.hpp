@@ -13,7 +13,7 @@ namespace trajopt {
     template <typename TrajectoryVarsType>
     class MinEffort : public ifopt::CostTerm {
     public:
-        MinEffort(const std::shared_ptr<TrajectoryVars>& footForceVars, size_t numKnots)
+        MinEffort(const std::shared_ptr<TrajectoryVarsType>& footForceVars, size_t numKnots)
             : CostTerm(footForceVars->GetName() + "cost_min_effort"),
               _varSetName(footForceVars->GetName()),
               _numKnots(numKnots)
@@ -24,7 +24,7 @@ namespace trajopt {
         {
             double c = 0.;
 
-            Eigen::VectorXd force_knots = GetVariables()->GetComponent(_varSetName)->GetValues();
+            Eigen::VectorXd force_knots = std::static_pointer_cast<TrajectoryVarsType>(GetVariables()->GetComponent(_varSetName))->GetValues();
 
             for (size_t i = 0; i < _numKnots; ++i) {
                 Eigen::VectorXd f = force_knots.segment(i * 3, 3);
@@ -37,7 +37,7 @@ namespace trajopt {
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _varSetName) {
-                Eigen::VectorXd force_knots = GetVariables()->GetComponent(_varSetName)->GetValues();
+                Eigen::VectorXd force_knots = std::static_pointer_cast<TrajectoryVarsType>(GetVariables()->GetComponent(_varSetName))->GetValues();
                 for (size_t i = 0; i < _numKnots; ++i) {
                     Eigen::VectorXd f = force_knots.segment(i * 3, 3);
                     jac_block.coeffRef(0, i * 3 + 0) += 2. * f[0];

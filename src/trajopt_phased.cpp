@@ -14,12 +14,14 @@
 #include <srbd/srbd.hpp>
 #include <terrain/terrain_grid.hpp>
 
+#include <ifopt_sets/cost/min_effort.hpp>
+
 #include <ifopt_sets/constraints/common/acceleration.hpp>
 #include <ifopt_sets/constraints/common/dynamics.hpp>
+#include <ifopt_sets/constraints/common/friction_cone.hpp>
 
 #include <ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
 #include <ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
-#include <ifopt_sets/constraints/phased/friction_cone_phased.hpp>
 #include <ifopt_sets/constraints/phased/phased_acceleration.hpp>
 
 #include <utils/types.hpp>
@@ -104,7 +106,9 @@ int main()
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionConePhased>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
+
+        // nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::PhasedTrajectoryVars>>(footPosVars, numKnots));
     }
 
     std::cout << "Solving.." << std::endl;

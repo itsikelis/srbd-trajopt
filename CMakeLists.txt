@@ -9,8 +9,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 # Find ifopt
 find_package(ifopt REQUIRED)
-# Find robo_spline
-# find_package(robo_spline 1.0 REQUIRED)
+
+# Include RobotDART with Mangum for graphics.
+find_package(RobotDART REQUIRED OPTIONAL_COMPONENTS Magnum)
 
 add_subdirectory(src)
 
