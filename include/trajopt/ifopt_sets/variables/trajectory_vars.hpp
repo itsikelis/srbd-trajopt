@@ -4,9 +4,9 @@
 #include <cstdlib>
 #include <string>
 
-#include <robo_spline/trajectory.hpp>
-
 #include <ifopt/variable_set.h>
+
+#include <trajopt/robo_spline/trajectory.hpp>
 
 namespace trajopt {
     class TrajectoryVars : public ifopt::VariableSet {

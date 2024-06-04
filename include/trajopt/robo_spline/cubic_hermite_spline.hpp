@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-#include <robo_spline/component.hpp>
-#include <robo_spline/types.hpp>
+#include <trajopt/robo_spline/component.hpp>
+#include <trajopt/robo_spline/types.hpp>
 
 namespace trajopt::rspl {
     template <size_t _Dim>

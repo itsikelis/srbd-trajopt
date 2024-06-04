@@ -2,17 +2,15 @@
 
 #include <ifopt/constraint_set.h>
 
-#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
 namespace trajopt {
-    template <typename FootTrajectoryVars>
-    class FrictionCone : public ifopt::ConstraintSet {
+    class FrictionConePhased : public ifopt::ConstraintSet {
     public:
-        FrictionCone(
-            const std::shared_ptr<FootTrajectoryVars>& forceVars,
-            const std::shared_ptr<FootTrajectoryVars>& posVars,
+        FrictionConePhased(
+            const std::shared_ptr<PhasedTrajectoryVars>& forceVars,
+            const std::shared_ptr<PhasedTrajectoryVars>& posVars,
             const trajopt::TerrainGrid& terrain,
             size_t numSamples,
             double sampleTime)
@@ -27,8 +25,8 @@ namespace trajopt {
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-            auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+            auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
             double t = 0.;
             for (size_t i = 0; i < _numSamples; ++i) {
@@ -71,8 +69,8 @@ namespace trajopt {
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _forceVarsName) {
-                auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-                auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+                auto forceVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+                auto posVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
                 double t = 0.;
                 for (size_t i = 0; i < _numSamples; ++i) {

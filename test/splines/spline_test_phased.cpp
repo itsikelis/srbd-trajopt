@@ -6,9 +6,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include <robo_spline/cubic_hermite_spline.hpp>
-#include <robo_spline/phased_trajectory.hpp>
-#include <robo_spline/trajectory.hpp>
+#include <trajopt/robo_spline/cubic_hermite_spline.hpp>
+#include <trajopt/robo_spline/phased_trajectory.hpp>
+#include <trajopt/robo_spline/trajectory.hpp>
 
 namespace rspl = trajopt::rspl;
 

@@ -9,23 +9,23 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <srbd/srbd.hpp>
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/srbd/srbd.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
-#include <ifopt_sets/cost/min_effort.hpp>
+#include <trajopt/ifopt_sets/cost/min_effort.hpp>
 
-#include <ifopt_sets/constraints/common/acceleration.hpp>
-#include <ifopt_sets/constraints/common/dynamics.hpp>
-#include <ifopt_sets/constraints/common/friction_cone.hpp>
+#include <trajopt/ifopt_sets/constraints/common/acceleration.hpp>
+#include <trajopt/ifopt_sets/constraints/common/dynamics.hpp>
+#include <trajopt/ifopt_sets/constraints/common/friction_cone.hpp>
 
-#include <ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
-#include <ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
-#include <ifopt_sets/constraints/phased/phased_acceleration.hpp>
+#include <trajopt/ifopt_sets/constraints/phased/foot_body_distance_phased.hpp>
+#include <trajopt/ifopt_sets/constraints/phased/foot_terrain_distance_phased.hpp>
+#include <trajopt/ifopt_sets/constraints/phased/phased_acceleration.hpp>
 
-#include <utils/types.hpp>
-#include <utils/utils.hpp>
+#include <trajopt/utils/types.hpp>
+#include <trajopt/utils/utils.hpp>
 
 int main()
 {

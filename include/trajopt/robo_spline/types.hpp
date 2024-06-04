@@ -1,8 +1,9 @@
 #pragma once
 
+#include <cstddef>
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <cstddef>
 
 namespace trajopt::rspl {
     using Vector = Eigen::Matrix<double, -1, 1>; // dynamic Vector.

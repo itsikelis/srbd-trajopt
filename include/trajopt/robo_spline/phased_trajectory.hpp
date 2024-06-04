@@ -3,9 +3,9 @@
 #include <cassert>
 #include <numeric>
 
-#include <robo_spline/component.hpp>
-#include <robo_spline/trajectory.hpp>
-#include <robo_spline/types.hpp>
+#include <trajopt/robo_spline/component.hpp>
+#include <trajopt/robo_spline/trajectory.hpp>
+#include <trajopt/robo_spline/types.hpp>
 
 namespace trajopt::rspl {
     template <size_t _Dim>
@@ -291,4 +291,4 @@ namespace trajopt::rspl {
         std::vector<bool> _is_stance;
         std::vector<size_t> _var_start; // Store in which index each spline's knot point starts.
     };
-} // namespace rspl
+} // namespace trajopt::rspl

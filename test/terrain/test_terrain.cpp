@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
 static constexpr size_t Rows = 3;
 static constexpr size_t Cols = 3;

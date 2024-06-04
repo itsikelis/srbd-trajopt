@@ -9,23 +9,23 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <srbd/srbd.hpp>
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/srbd/srbd.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
-#include <ifopt_sets/cost/min_effort.hpp>
+#include <trajopt/ifopt_sets/cost/min_effort.hpp>
 
-#include <ifopt_sets/constraints/common/acceleration.hpp>
-#include <ifopt_sets/constraints/common/dynamics.hpp>
+#include <trajopt/ifopt_sets/constraints/common/acceleration.hpp>
+#include <trajopt/ifopt_sets/constraints/common/dynamics.hpp>
 
-#include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
-#include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
-#include <ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
-#include <ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
-#include <ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/friction_cone_implicit.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
 
-#include <utils/types.hpp>
-#include <utils/utils.hpp>
+#include <trajopt/utils/types.hpp>
+#include <trajopt/utils/utils.hpp>
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;

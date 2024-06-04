@@ -8,28 +8,23 @@
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <srbd/srbd.hpp>
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/srbd/srbd.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
-#include <ifopt_sets/cost/min_effort.hpp>
+#include <trajopt/ifopt_sets/cost/min_effort.hpp>
 
-#include <ifopt_sets/constraints/common/acceleration.hpp>
-#include <ifopt_sets/constraints/common/dynamics.hpp>
-#include <ifopt_sets/constraints/common/friction_cone.hpp>
+#include <trajopt/ifopt_sets/constraints/common/acceleration.hpp>
+#include <trajopt/ifopt_sets/constraints/common/dynamics.hpp>
+#include <trajopt/ifopt_sets/constraints/common/friction_cone.hpp>
 
-#include <ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
-#include <ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
-#include <ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
-#include <ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/foot_body_distance_implicit.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/foot_terrain_distance_implicit.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_contact.hpp>
+#include <trajopt/ifopt_sets/constraints/contact_implicit/implicit_velocity.hpp>
 
-#include <utils/types.hpp>
-#include <utils/utils.hpp>
-
-// #include <robot_dart/gui/magnum/graphics.hpp>
-// #include <robot_dart/robot_dart_simu.hpp>
-
-#define VISUALISE 0
+#include <trajopt/utils/types.hpp>
+#include <trajopt/utils/utils.hpp>
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -204,39 +199,6 @@ int main()
     //     std::cout << foot_force[i * 6 + 2] << std::endl;
     // }
     // std::cout << std::endl;
-
-#if (VISUALISE)
-    // Part B: Visualise in simulation.
-    // Load robot.
-    auto quad = std::make_shared<robot_dart::Robot>(std::string(SRCPATH) + "/../urdf/drone.urdf");
-    quad->free_from_world();
-
-    // Create simulation world.
-    robot_dart::RobotDARTSimu simu(0.005);
-    auto graphics = std::make_shared<robot_dart::gui::magnum::Graphics>();
-    simu.set_graphics(graphics);
-    // simu.set_graphics_freq(0.01);
-    graphics->record_video(std::string(SRCPATH) + "/planar-quad-gasfadfaef.mp4");
-    // simu.set_graphics_freq(static_cast<int>(1. / DT));
-
-    rspl::Trajectory<1> trajectory_x = std::static_pointer_cast<planar_quad::XTrajectory>(nlp.GetOptVariables()->GetComponent(planar_quad::X_VARIABLES))->GetTrajectory();
-    rspl::Trajectory<1> trajectory_y = std::static_pointer_cast<planar_quad::YTrajectory>(nlp.GetOptVariables()->GetComponent(planar_quad::Y_VARIABLES))->GetTrajectory();
-    rspl::Trajectory<1> trajectory_theta = std::static_pointer_cast<planar_quad::ThetaTrajectory>(nlp.GetOptVariables()->GetComponent(planar_quad::THETA_VARIABLES))->GetTrajectory();
-
-    auto jac = quad->get_jacobian();
-
-    simu.add_visual_robot(quad);
-    // simu.add_checkerboard_floor();
-    t = 0.;
-    // Visualise trajectory.
-    while (t <= planar_quad::DURATION) {
-        quad->set_positions(robot_dart::make_vector({0., -trajectory_theta.position(t)(0), 0., trajectory_x.position(t)(0), 0., trajectory_y.position(t)(0)}));
-        if (simu.step_world())
-            break;
-        // std::cout << trajectory_theta.position(t)(0) << std::endl;
-        t += simu.timestep();
-    }
-#endif
 
     return 0;
 }

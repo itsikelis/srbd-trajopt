@@ -2,12 +2,12 @@
 
 #include <ifopt/constraint_set.h>
 
-#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
-#include <ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
 
-#include <srbd/srbd.hpp>
-#include <utils/types.hpp>
-#include <utils/utils.hpp>
+#include <trajopt/srbd/srbd.hpp>
+#include <trajopt/utils/types.hpp>
+#include <trajopt/utils/utils.hpp>
 
 namespace trajopt {
     template <typename FootTrajectoryVars>

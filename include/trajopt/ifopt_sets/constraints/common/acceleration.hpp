@@ -2,12 +2,12 @@
 
 #include <ifopt/constraint_set.h>
 
-#include <ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
 
 namespace trajopt {
-    class PhasedAccelerationConstraints : public ifopt::ConstraintSet {
+    class AccelerationConstraints : public ifopt::ConstraintSet {
     public:
-        PhasedAccelerationConstraints(const std::shared_ptr<PhasedTrajectoryVars>& vars) : ConstraintSet(kSpecifyLater, vars->GetName() + "_equal_acc"), _variableSetName(vars->GetName())
+        AccelerationConstraints(const std::shared_ptr<TrajectoryVars>& vars) : ConstraintSet(kSpecifyLater, vars->GetName() + "_equal_acc"), _varSetName(vars->GetName())
         {
             SetRows((vars->numKnotPoints() - 2) * 3);
         }
@@ -16,10 +16,10 @@ namespace trajopt {
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_variableSetName));
+            auto vars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_varSetName));
 
-            auto iters = vars->numSplines() - 1;
-            for (size_t i = 0; i < iters; i++) {
+            auto iters = vars->numSplines();
+            for (unsigned int i = 0; i < iters - 1; i++) {
                 g.segment(i * 3, 3) = vars->splineEval(i, vars->splineDuration(i), 2) - vars->splineEval(i + 1, 0., 2);
             }
 
@@ -38,8 +38,8 @@ namespace trajopt {
 
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
-            if (var_set == _variableSetName) {
-                auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_variableSetName));
+            if (var_set == _varSetName) {
+                auto vars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_varSetName));
 
                 auto iters = vars->numSplines() - 1;
                 for (unsigned int i = 0; i < iters; i++) {
@@ -52,6 +52,6 @@ namespace trajopt {
         }
 
     protected:
-        std::string _variableSetName;
+        std::string _varSetName;
     };
 } // namespace trajopt

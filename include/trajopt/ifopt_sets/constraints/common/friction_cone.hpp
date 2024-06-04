@@ -2,33 +2,33 @@
 
 #include <ifopt/constraint_set.h>
 
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <terrain/terrain_grid.hpp>
+#include <trajopt/ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/terrain/terrain_grid.hpp>
 
 namespace trajopt {
-    class FrictionConeImplicit : public ifopt::ConstraintSet {
+    template <typename FootTrajectoryVars>
+    class FrictionCone : public ifopt::ConstraintSet {
     public:
-        FrictionConeImplicit(
-            const std::shared_ptr<TrajectoryVars>& forceVars,
-            const std::shared_ptr<TrajectoryVars>& posVars,
+        FrictionCone(
+            const std::shared_ptr<FootTrajectoryVars>& forceVars,
+            const std::shared_ptr<FootTrajectoryVars>& posVars,
             const trajopt::TerrainGrid& terrain,
             size_t numSamples,
             double sampleTime)
             : ConstraintSet(5 * numSamples, forceVars->GetName() + "_friction_cone"),
-              _posVarsName(posVars->GetName()),
               _forceVarsName(forceVars->GetName()),
-              _terrain(terrain),
+              _posVarsName(posVars->GetName()),
               _numSamples(numSamples),
-              _sampleTime(sampleTime)
-        {
-        }
+              _sampleTime(sampleTime),
+              _terrain(terrain) {}
 
         VectorXd GetValues() const override
         {
             VectorXd g = VectorXd::Zero(GetRows());
 
-            auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-            auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+            auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
             double t = 0.;
             for (size_t i = 0; i < _numSamples; ++i) {
@@ -71,8 +71,8 @@ namespace trajopt {
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
             if (var_set == _forceVarsName) {
-                auto forceVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-                auto posVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+                auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+                auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
                 double t = 0.;
                 for (size_t i = 0; i < _numSamples; ++i) {
@@ -107,11 +107,10 @@ namespace trajopt {
             }
         }
 
-    protected:
-        const std::string _posVarsName;
-        const std::string _forceVarsName;
-        const trajopt::TerrainGrid _terrain;
+    private:
+        const std::string _forceVarsName, _posVarsName;
         const size_t _numSamples;
         const double _sampleTime;
+        const trajopt::TerrainGrid _terrain;
     };
 } // namespace trajopt

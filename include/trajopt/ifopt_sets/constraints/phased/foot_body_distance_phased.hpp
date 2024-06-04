@@ -2,23 +2,21 @@
 
 #include <ifopt/constraint_set.h>
 
-#include <ifopt_sets/variables/trajectory_vars.hpp>
-#include <srbd/srbd.hpp>
-
-#include <utils/types.hpp>
-#include <utils/utils.hpp>
+#include <trajopt/ifopt_sets/variables/phased_trajectory_vars.hpp>
+#include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
+#include <trajopt/srbd/srbd.hpp>
+#include <trajopt/utils/types.hpp>
 
 namespace trajopt {
-
-    class FootBodyDistanceImplicit : public ifopt::ConstraintSet {
+    class FootBodyDistancePhased : public ifopt::ConstraintSet {
     public:
-        FootBodyDistanceImplicit(
+        FootBodyDistancePhased(
             const SingleRigidBodyDynamicsModel& model,
             const std::shared_ptr<TrajectoryVars>& bodyPosVars,
             const std::shared_ptr<TrajectoryVars>& bodyRotVars,
-            const std::shared_ptr<TrajectoryVars>& footPosVars,
+            const std::shared_ptr<PhasedTrajectoryVars>& footPosVars,
             size_t numSamples, double sampleTime)
-            : ConstraintSet(3 * numSamples, footPosVars->GetName() + "_foot_body_distance"),
+            : ConstraintSet(3 * numSamples, footPosVars->GetName() + "_foot_body_pos"),
               _model(model),
               _bodyPosVarsName(bodyPosVars->GetName()),
               _bodyRotVarsName(bodyRotVars->GetName()),
@@ -34,7 +32,7 @@ namespace trajopt {
 
             auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyPosVarsName));
             auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyRotVarsName));
-            auto footPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
+            auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
 
             double t = 0.;
             for (size_t i = 0; i < _numSamples; ++i) {
@@ -76,7 +74,7 @@ namespace trajopt {
         {
             auto bodyPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyPosVarsName));
             auto bodyRotVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_bodyRotVarsName));
-            auto footPosVars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
+            auto footPosVars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_footPosVarsName));
 
             if (var_set == _bodyPosVarsName) {
                 double t = 0.;
@@ -119,6 +117,7 @@ namespace trajopt {
             }
         }
 
+    protected:
     protected:
         const SingleRigidBodyDynamicsModel _model;
         const std::string _bodyPosVarsName;
