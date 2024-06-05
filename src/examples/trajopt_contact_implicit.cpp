@@ -37,7 +37,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 static constexpr size_t numKnots = 5;
-static constexpr size_t numSamples = 6;
+static constexpr size_t numSamples = 10;
 
 static constexpr double totalTime = 0.5;
 
@@ -46,7 +46,7 @@ static constexpr double initBodyPosX = 0.;
 static constexpr double initBodyPosY = 0.;
 static constexpr double initBodyPosZ = 0.5;
 
-static constexpr double targetBodyPosX = 0.;
+static constexpr double targetBodyPosX = 0.2;
 static constexpr double targetBodyPosY = 0.;
 static constexpr double targetBodyPosZ = 0.5;
 

@@ -2,6 +2,6 @@
 .cache
 .ccls-cache
 
-build
+build/
 *.out
 *.mp4
