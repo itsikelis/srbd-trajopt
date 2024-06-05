@@ -171,7 +171,7 @@ int main()
     ifopt::IpoptSolver ipopt;
     ipopt.SetOption("jacobian_approximation", "exact");
     ipopt.SetOption("max_cpu_time", 1e50);
-    ipopt.SetOption("max_iter", static_cast<int>(500));
+    ipopt.SetOption("max_iter", static_cast<int>(1000));
 
     // Solve.
     auto tStart = std::chrono::high_resolution_clock::now();
