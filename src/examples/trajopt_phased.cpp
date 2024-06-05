@@ -43,12 +43,12 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 20;
-    size_t numSamples = 20;
+    static constexpr size_t numKnots = 5;
+    size_t numSamples = 10;
 
     double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-    auto polyTimes = Eigen::VectorXd(numKnots - 1);
+    Eigen::VectorXd polyTimes = Eigen::VectorXd::Zero(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
         polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
     }
@@ -57,7 +57,7 @@ int main()
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
-    auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
+    Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
     nlp.AddVariableSet(posVars);
@@ -65,7 +65,7 @@ int main()
     Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
     Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
     ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
-    auto initBodyRotVals = Eigen::VectorXd(3 * 2 * numKnots);
+    Eigen::VectorXd initBodyRotVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
     nlp.AddVariableSet(rotVars);
 
@@ -79,21 +79,20 @@ int main()
     size_t numPosSteps = 2;
     size_t numForceSteps = 1;
     Eigen::Vector3d phaseTimes = {0.2, 0.1, 0.2};
-    std::vector<size_t> posKnotsPerSwing = {3};
-    std::vector<size_t> forceKnotsPerSwing = {3, 3};
+    std::vector<size_t> posKnotsPerSwing = {1};
+    std::vector<size_t> forceKnotsPerSwing = {5, 5};
 
     // size_t numPhasedKnots = numPosSteps + std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
     // size_t numPhasedVars = 3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0);
     double max_force = 2. * model.mass * std::abs(model.gravity[2]);
-    auto initFootPosVals = Eigen::VectorXd(3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0));
-    auto initFootForceVals = Eigen::VectorXd(3 * numForceSteps + 6 * std::accumulate(forceKnotsPerSwing.begin(), forceKnotsPerSwing.end(), 0));
+    Eigen::VectorXd initFootPosVals = Eigen::VectorXd::Zero(3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0));
+    Eigen::VectorXd initFootForceVals = Eigen::VectorXd::Zero(3 * numForceSteps + 6 * std::accumulate(forceKnotsPerSwing.begin(), forceKnotsPerSwing.end(), 0));
 
     // std::cout << initFootPosVals.rows() << " , " << initFootForceVals.rows() << std::endl;
     // std::cout << numPhasedKnots << " , " << initFootForceVals.rows() << std::endl;
 
     ifopt::Component::VecBound footPosBounds(3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0), ifopt::NoBound);
     ifopt::Component::VecBound footForceBounds(3 * numForceSteps + 6 * std::accumulate(forceKnotsPerSwing.begin(), forceKnotsPerSwing.end(), 0), ifopt::Bounds(-max_force, max_force));
-
 
     // std::vector<std::make_shared<trajopt::PhasedTrajectoryVars>> feetForces, feetPos;
 
