@@ -12,7 +12,7 @@ ImplicitContactConstraints::VectorXd ImplicitContactConstraints::GetValues() con
     auto force_traj = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
 
     double dt = 0.;
-    for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
+    for (size_t i = 0; i < _numSamples; ++i) {
         Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
         Eigen::VectorXd force = force_traj->trajectoryEval(dt, 0);
 
@@ -39,7 +39,7 @@ void ImplicitContactConstraints::FillJacobianBlock(std::string var_set, Implicit
 
     if (var_set == _forceVarsName) {
         double dt = 0.;
-        for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
+        for (size_t i = 0; i < _numSamples; ++i) {
             Jacobian dForce = force_traj->trajectoryJacobian(dt, 0);
 
             Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
@@ -59,7 +59,7 @@ void ImplicitContactConstraints::FillJacobianBlock(std::string var_set, Implicit
     }
     else if (var_set == _posVarsName) {
         double dt = 0.;
-        for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
+        for (size_t i = 0; i < _numSamples; ++i) {
             Jacobian dPos = force_traj->trajectoryJacobian(dt, 0);
 
             Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);

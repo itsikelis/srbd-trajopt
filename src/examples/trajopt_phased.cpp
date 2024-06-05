@@ -27,6 +27,20 @@
 #include <trajopt/utils/types.hpp>
 #include <trajopt/utils/utils.hpp>
 
+static constexpr size_t numKnots = 5;
+static constexpr size_t numSamples = 10;
+
+static constexpr double totalTime = 0.5;
+
+// Body position
+static constexpr double initBodyPosX = 0.;
+static constexpr double initBodyPosY = 0.;
+static constexpr double initBodyPosZ = 0.5;
+
+static constexpr double targetBodyPosX = 0.2;
+static constexpr double targetBodyPosY = 0.;
+static constexpr double targetBodyPosZ = 0.5;
+
 int main()
 {
     trajopt::SingleRigidBodyDynamicsModel model;
@@ -43,10 +57,6 @@ int main()
     // Add variable sets.
     ifopt::Problem nlp;
 
-    static constexpr size_t numKnots = 5;
-    size_t numSamples = 10;
-
-    double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
     Eigen::VectorXd polyTimes = Eigen::VectorXd::Zero(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
@@ -54,8 +64,8 @@ int main()
     }
 
     // Add body pos and rot var sets.
-    Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
+    Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(0., 0.));
+    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
     Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
