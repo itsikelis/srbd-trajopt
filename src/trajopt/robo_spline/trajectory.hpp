@@ -59,7 +59,7 @@ namespace trajopt::rspl {
                 return;
             }
 
-            Vector spline_knots = Vector(4 * _Dim);
+            Vector spline_knots = Vector::Zero(4 * _Dim);
             spline_knots << _last_pos, _last_vel, next_pos, next_vel;
             this->_splines.push_back(std::make_shared<Spline>(spline_knots, dt));
             this->_T += dt;

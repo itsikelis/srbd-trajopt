@@ -9,7 +9,7 @@
 namespace trajopt {
     struct SingleRigidBodyDynamicsModel {
         SingleRigidBodyDynamicsModel() = default;
-        SingleRigidBodyDynamicsModel(double m, Eigen::Matrix3d I, double nFeet, std::vector<Eigen::Vector3d> fPoses)
+        SingleRigidBodyDynamicsModel(double m, const Eigen::Matrix3d& I, double nFeet, const std::vector<Eigen::Vector3d>& fPoses)
             : mass(m), inertia(I), numFeet(nFeet), feetPoses(fPoses)
         {
             inertia_inv = inertia.inverse();

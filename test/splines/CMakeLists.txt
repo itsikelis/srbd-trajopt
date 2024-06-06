@@ -6,7 +6,6 @@ target_link_libraries(spline_test_regular PRIVATE
   Eigen3::Eigen
 )
 
-target_compile_features(spline_test_regular PRIVATE cxx_std_20)
 target_compile_options(spline_test_regular PRIVATE "-Wall;-Wextra;-O3")
 
 
@@ -18,5 +17,4 @@ target_link_libraries(spline_test_phased PRIVATE
   Eigen3::Eigen
 )
 
-target_compile_features(spline_test_phased PRIVATE cxx_std_20)
 target_compile_options(spline_test_phased PRIVATE "-Wall;-Wextra;-O3")

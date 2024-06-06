@@ -5,8 +5,7 @@ target_include_directories(jac_test_phased PRIVATE ${PROJECT_SOURCE_DIR}/src)
 # Link libraries and add compiler options
 target_link_libraries(jac_test_phased PUBLIC ${PROJECT_NAME})
 
-target_compile_features(jac_test_phased PRIVATE cxx_std_20)
-target_compile_options(jac_test_phased PRIVATE "-Wall;-Wextra;-O3") # -Werror
+target_compile_options(jac_test_phased PRIVATE "-Wall;-Wextra;-O3")
 target_compile_definitions(jac_test_phased PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 # Contact implicit Jacobian tests
@@ -17,6 +16,5 @@ target_include_directories(jac_test_implicit PRIVATE ${PROJECT_SOURCE_DIR}/src)
 # Link libraries and add compiler options
 target_link_libraries(jac_test_implicit PUBLIC ${PROJECT_NAME})
 
-target_compile_features(jac_test_implicit PRIVATE cxx_std_20)
-target_compile_options(jac_test_implicit PRIVATE "-Wall;-Wextra;-O3") # -Werror
+target_compile_options(jac_test_implicit PRIVATE "-Wall;-Wextra;-O3")
 target_compile_definitions(jac_test_implicit PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

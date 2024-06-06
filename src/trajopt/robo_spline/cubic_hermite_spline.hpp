@@ -158,15 +158,15 @@ namespace trajopt::rspl {
 
     protected:
         // Initial and final knot points.
-        VecD _p0;
-        VecD _v0;
-        VecD _p1;
-        VecD _v1;
+        VecD _p0{VecD::Zero()};
+        VecD _v0{VecD::Zero()};
+        VecD _p1{VecD::Zero()};
+        VecD _v1{VecD::Zero()};
 
         // Spline coefficients.
-        VecD _c0;
-        VecD _c1;
-        VecD _c2;
-        VecD _c3;
+        VecD _c0{VecD::Zero()};
+        VecD _c1{VecD::Zero()};
+        VecD _c2{VecD::Zero()};
+        VecD _c3{VecD::Zero()};
     };
 } // namespace trajopt::rspl

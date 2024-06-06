@@ -223,26 +223,19 @@ int main()
     robot_dart::RobotDARTSimu simu(0.001);
     auto graphics = std::make_shared<robot_dart::gui::magnum::Graphics>();
     simu.set_graphics(graphics);
+    // simu.set_graphics_freq(500);
     graphics->record_video(std::string(SRCPATH) + "srbd_implicit.mp4");
 
     simu.add_floor();
     // auto terrain = std::make_shared<robot_dart::Robot>(std::string(SRCPATH) + "/step-terrain.urdf");
     // simu.add_visual_robot(terrain);
 
-    auto robot = robot_dart::Robot::create_box(Eigen::Vector3d(0.6, 0.2, 0.15), Eigen::Isometry3d::Identity());
-    robot->free_from_world();
-    robot->set_ghost(false);
-    robot->set_cast_shadows(true);
-    simu.add_robot(robot);
-    robot->skeleton()->setMobile(false);
+    auto robot = robot_dart::Robot::create_box(Eigen::Vector3d(0.6, 0.2, 0.15), Eigen::Isometry3d::Identity(), "free");
+    simu.add_visual_robot(robot);
 
     for (size_t k = 0; k < model.numFeet; ++k) {
-
         auto foot = robot_dart::Robot::create_ellipsoid(Eigen::Vector3d(0.05, 0.05, 0.05), Eigen::Isometry3d::Identity(), "free", 0.1, dart::Color::Red(1.0), "foot" + std::to_string(k));
-        foot->set_ghost(false);
-        foot->set_cast_shadows(true);
-        foot->skeleton()->setMobile(false);
-        simu.add_robot(foot);
+        simu.add_visual_robot(foot);
     }
 
     // Visualise trajectory.
@@ -271,6 +264,8 @@ int main()
         }
 
         simu.step_world();
+
+        t += dt;
     }
     simu.run(1.);
 

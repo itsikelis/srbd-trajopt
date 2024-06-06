@@ -81,19 +81,22 @@ namespace trajopt {
                     auto x = footPos[0];
                     auto y = footPos[1];
 
-                    Jacobian mult0 = _terrain.n(x, y).transpose().sparseView(1, -1);
+                    Eigen::Vector3d n = _terrain.n(x, y);
+                    Eigen::Vector3d tt = _terrain.t(x, y);
+                    Eigen::Vector3d tb = _terrain.b(x, y);
+                    Jacobian mult0 = n.transpose().sparseView(1, -1);
                     Jacobian res0 = mult0 * fPos;
 
-                    Jacobian mult1 = (_terrain.t(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
+                    Jacobian mult1 = (tt - _terrain.mu() * n).transpose().sparseView(1, -1);
                     Jacobian res1 = mult1 * fPos;
 
-                    Jacobian mult2 = (-_terrain.t(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
+                    Jacobian mult2 = (-tt - _terrain.mu() * n).transpose().sparseView(1, -1);
                     Jacobian res2 = mult2 * fPos;
 
-                    Jacobian mult3 = (_terrain.b(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
+                    Jacobian mult3 = (tb - _terrain.mu() * n).transpose().sparseView(1, -1);
                     Jacobian res3 = mult3 * fPos;
 
-                    Jacobian mult4 = (-_terrain.b(x, y) - _terrain.mu() * _terrain.n(x, y)).transpose().sparseView(1, -1);
+                    Jacobian mult4 = (-tb - _terrain.mu() * n).transpose().sparseView(1, -1);
                     Jacobian res4 = mult4 * fPos;
 
                     jac_block.middleRows(i * 5 + 0, 1) += res0;

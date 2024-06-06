@@ -5,8 +5,7 @@ add_library(${PROJECT_NAME} ${SRCS})
  
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3;-Werror")
+target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3;-Werror;-std=c++20")
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
   Eigen3::Eigen
@@ -26,13 +25,20 @@ add_executable(${PROJECT_NAME}_implicit examples/trajopt_contact_implicit.cpp)
 
 target_include_directories(${PROJECT_NAME}_implicit PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
-target_link_libraries(${PROJECT_NAME}_implicit PRIVATE 
-  ${PROJECT_NAME}
-)
+target_link_libraries(${PROJECT_NAME}_implicit PRIVATE  ${PROJECT_NAME})
 
 if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
+  set_target_properties(RobotDART::Simu PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+  set_target_properties(RobotDART::Magnum PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+
   target_compile_definitions(${PROJECT_NAME}_implicit PUBLIC "-DVIZ=1")
   target_link_libraries(${PROJECT_NAME}_implicit PRIVATE 
+    RobotDART::Simu
+    RobotDART::Magnum
+  )
+
+  target_compile_definitions(${PROJECT_NAME}_phased PUBLIC "-DVIZ=1")
+  target_link_libraries(${PROJECT_NAME}_phased PRIVATE 
     RobotDART::Simu
     RobotDART::Magnum
   )
