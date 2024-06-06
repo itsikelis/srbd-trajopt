@@ -26,18 +26,13 @@
 #include <trajopt/utils/types.hpp>
 #include <trajopt/utils/utils.hpp>
 
-#define VIZ 1
-
 #if (VIZ)
 #include <robot_dart/gui/magnum/graphics.hpp>
 #include <robot_dart/robot_dart_simu.hpp>
 #endif
 
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-
-static constexpr size_t numKnots = 5;
-static constexpr size_t numSamples = 10;
+static constexpr size_t numKnots = 10;
+static constexpr size_t numSamples = 16;
 
 static constexpr double totalTime = 0.5;
 
@@ -64,31 +59,31 @@ int main()
     ifopt::Problem nlp;
 
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-    VectorXd polyTimes = VectorXd::Zero(numKnots - 1);
+    Eigen::VectorXd polyTimes = Eigen::VectorXd::Zero(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
         polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
     }
 
     // Add body pos and rot var sets.
-    Vector3d initBodyPos = Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(initBodyPosX, initBodyPosY));
-    Vector3d targetBodyPos = Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(targetBodyPosX, targetBodyPosX));
-    auto bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
-    VectorXd initBodyPosVals = VectorXd::Zero(3 * 2 * numKnots);
+    Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(initBodyPosX, initBodyPosY));
+    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(targetBodyPosX, targetBodyPosX));
+    ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
+    Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
     nlp.AddVariableSet(posVars);
 
-    Vector3d initRotPos = Vector3d::Zero();
-    Vector3d targetRotPos = Vector3d::Zero();
-    auto bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
-    VectorXd initBodyRotVals = VectorXd::Zero(3 * 2 * numKnots);
+    Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
+    Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
+    ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
+    Eigen::VectorXd initBodyRotVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
     nlp.AddVariableSet(rotVars);
 
     // Add feet variable sets.
-    VectorXd initFootPosVals = VectorXd::Zero(3 * 2 * numKnots);
-    VectorXd initFootForceVals = VectorXd::Zero(3 * 2 * numKnots);
+    Eigen::VectorXd initFootPosVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
+    Eigen::VectorXd initFootForceVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
     ifopt::Component::VecBound footPosBounds(6 * numKnots, ifopt::NoBound);
     // ifopt::Component::VecBound footForceBounds(6 * numKnots, ifopt::NoBound);
@@ -256,8 +251,8 @@ int main()
 
     double t = 0.;
     for (size_t i = 0; i < iters; ++i) {
-        Vector3d bodyPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(t, 0);
-        Vector3d bodyRot = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_ROT_TRAJECTORY))->trajectoryEval(t, 0);
+        Eigen::Vector3d bodyPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(t, 0);
+        Eigen::Vector3d bodyRot = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_ROT_TRAJECTORY))->trajectoryEval(t, 0);
 
         Eigen::AngleAxisd z_rot(bodyRot[0], Eigen::Vector3d::UnitZ());
         Eigen::AngleAxisd y_rot(bodyRot[1], Eigen::Vector3d::UnitY());
@@ -271,7 +266,7 @@ int main()
         simu.robot(1)->set_positions(robot_dart::make_vector({rot[0], rot[1], rot[2], bodyPos[0], bodyPos[1], bodyPos[2]}));
 
         for (size_t k = 0; k < model.numFeet; ++k) {
-            Vector3d footPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(t, 0);
+            Eigen::Vector3d footPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(t, 0);
             simu.robot(k + 2)->set_positions(robot_dart::make_vector({0., 0., 0., footPos[0], footPos[1], footPos[2] + 0.025}));
         }
 
