@@ -61,7 +61,7 @@ public:
     {
         _nlp = nlp;
 
-        ;
+        _calc_constr_dims();
     }
 
     Scalar f(const x_t& x)
@@ -168,10 +168,10 @@ protected:
 protected:
     ifopt::Problem _nlp;
 
-    size_t _dim;
+    size_t _dim{0};
 
-    int _neq{-1}; // Number of equality constraints.
-    int _nin{-1}; // Number of inequality constraints.
+    size_t _neq{0}; // Number of equality constraints.
+    size_t _nin{0}; // Number of inequality constraints.
 };
 
 using fit_t = AlmProblem<>;
