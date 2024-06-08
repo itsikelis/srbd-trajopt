@@ -4,6 +4,8 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+#include <iostream>
+
 namespace numopt {
     namespace algo {
 

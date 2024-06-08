@@ -65,3 +65,43 @@ if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
 endif()
 
 target_compile_definitions(${PROJECT_NAME}_alm PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+# Add Phased Augmented Lagrangian example
+add_executable(${PROJECT_NAME}_phased_alm examples/trajopt_phased_alm.cpp)
+
+target_include_directories(${PROJECT_NAME}_phased_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
+
+target_link_libraries(${PROJECT_NAME}_phased_alm PRIVATE ${PROJECT_NAME})
+
+if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
+  set_target_properties(RobotDART::Simu PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+  set_target_properties(RobotDART::Magnum PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+
+  target_compile_definitions(${PROJECT_NAME}_phased_alm PUBLIC "-DVIZ=1")
+  target_link_libraries(${PROJECT_NAME}_phased_alm PRIVATE 
+    RobotDART::Simu
+    RobotDART::Magnum
+  )
+endif()
+
+target_compile_definitions(${PROJECT_NAME}_phased_alm PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+# Add DI example
+add_executable(${PROJECT_NAME}_di_alm examples/trajopt_di_alm.cpp)
+
+target_include_directories(${PROJECT_NAME}_di_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
+
+target_link_libraries(${PROJECT_NAME}_di_alm PRIVATE ${PROJECT_NAME})
+
+if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
+  set_target_properties(RobotDART::Simu PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+  set_target_properties(RobotDART::Magnum PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+
+  target_compile_definitions(${PROJECT_NAME}_di_alm PUBLIC "-DVIZ=1")
+  target_link_libraries(${PROJECT_NAME}_di_alm PRIVATE 
+    RobotDART::Simu
+    RobotDART::Magnum
+  )
+endif()
+
+target_compile_definitions(${PROJECT_NAME}_di_alm PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
