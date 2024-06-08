@@ -62,12 +62,6 @@ if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
     RobotDART::Simu
     RobotDART::Magnum
   )
-
-  target_compile_definitions(${PROJECT_NAME}_alm PUBLIC "-DVIZ=1")
-  target_link_libraries(${PROJECT_NAME}_alm PRIVATE 
-    RobotDART::Simu
-    RobotDART::Magnum
-  )
 endif()
 
 target_compile_definitions(${PROJECT_NAME}_alm PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

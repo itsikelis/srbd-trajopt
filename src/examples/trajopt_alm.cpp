@@ -1,4 +1,3 @@
-#include <Eigen/Dense>
 #include <chrono>
 #include <ctime>
 #include <iostream>
@@ -26,6 +25,11 @@
 
 #include <trajopt/utils/types.hpp>
 #include <trajopt/utils/utils.hpp>
+
+#if (VIZ)
+#include <robot_dart/gui/magnum/graphics.hpp>
+#include <robot_dart/robot_dart_simu.hpp>
+#endif
 
 static constexpr size_t numKnots = 10;
 static constexpr size_t numSamples = 16;
@@ -497,6 +501,9 @@ int main()
     // std::cout << "c: " << fit.c(algo.x()) << std::endl;
     // std::cout << "dc:\n" << fit.dc(algo.x()) << std::endl;
 
+    // Solve.
+    auto tStart = std::chrono::high_resolution_clock::now();
+
     unsigned int iters = 100;
     for (unsigned int i = 0; i < iters; ++i) {
         auto log = algo.step();
@@ -505,6 +512,13 @@ int main()
         std::cout << "c: " << log.c.norm() << std::endl;
         // std::cout << " " << log.func_evals << " " << log.cons_evals << " " << log.grad_evals << " " << log.hessian_evals << " " << log.cjac_evals << std::endl;
     }
+
+    nlp.SetVariables(algo.x().data());
+    nlp.PrintCurrent();
+    const auto tEnd = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration<double, std::milli>(tEnd - tStart);
+    std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
 
     // fit_t::x_t x = fit.x0;
     // for (size_t k = 0; k < fit_t::T; k++) {
@@ -515,6 +529,57 @@ int main()
     //         x = fit.xN;
     //     std::cout << x.transpose() << std::endl;
     // }
+
+#if (VIZ)
+    robot_dart::RobotDARTSimu simu(0.001);
+    auto graphics = std::make_shared<robot_dart::gui::magnum::Graphics>();
+    simu.set_graphics(graphics);
+    // simu.set_graphics_freq(500);
+    graphics->record_video(std::string(SRCPATH) + "srbd_implicit.mp4");
+
+    simu.add_floor();
+    // auto terrain = std::make_shared<robot_dart::Robot>(std::string(SRCPATH) + "/step-terrain.urdf");
+    // simu.add_visual_robot(terrain);
+
+    auto robot = robot_dart::Robot::create_box(Eigen::Vector3d(0.6, 0.2, 0.15), Eigen::Isometry3d::Identity(), "free");
+    simu.add_visual_robot(robot);
+
+    for (size_t k = 0; k < model.numFeet; ++k) {
+        auto foot = robot_dart::Robot::create_ellipsoid(Eigen::Vector3d(0.05, 0.05, 0.05), Eigen::Isometry3d::Identity(), "free", 0.1, dart::Color::Red(1.0), "foot" + std::to_string(k));
+        simu.add_visual_robot(foot);
+    }
+
+    // Visualise trajectory.
+    double dt = 0.001;
+    size_t viz_iters = totalTime / dt + 1;
+
+    double t = 0.;
+    for (size_t i = 0; i < viz_iters; ++i) {
+        Eigen::Vector3d bodyPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(t, 0);
+        Eigen::Vector3d bodyRot = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_ROT_TRAJECTORY))->trajectoryEval(t, 0);
+
+        Eigen::AngleAxisd z_rot(bodyRot[0], Eigen::Vector3d::UnitZ());
+        Eigen::AngleAxisd y_rot(bodyRot[1], Eigen::Vector3d::UnitY());
+        Eigen::AngleAxisd x_rot(bodyRot[2], Eigen::Vector3d::UnitX());
+        auto tf = Eigen::Isometry3d::Identity();
+        tf.rotate(z_rot);
+        tf.rotate(y_rot);
+        tf.rotate(x_rot);
+
+        auto rot = dart::math::logMap(tf);
+        simu.robot(1)->set_positions(robot_dart::make_vector({rot[0], rot[1], rot[2], bodyPos[0], bodyPos[1], bodyPos[2]}));
+
+        for (size_t k = 0; k < model.numFeet; ++k) {
+            Eigen::Vector3d footPos = std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(t, 0);
+            simu.robot(k + 2)->set_positions(robot_dart::make_vector({0., 0., 0., footPos[0], footPos[1], footPos[2] + 0.025}));
+        }
+
+        simu.step_world();
+
+        t += dt;
+    }
+    simu.run(1.);
+#endif
 
     return 0;
 }
