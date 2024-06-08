@@ -55,7 +55,7 @@ namespace numopt {
                 x_t c;
             };
 
-            AugmentedLagrangianMethod(const Params& params) : _params(params)
+            AugmentedLagrangianMethod(const Params& params, const Fit& fit) : _params(params), _fit(fit)
             {
                 assert(params.initial_x.size() == params.dim && "Initial point size and dimensions should match!");
                 assert(params.initial_lambda.size() == (params.dim_eq + params.dim_ineq) && "Initial lambda size and constraint dimensions should match!");

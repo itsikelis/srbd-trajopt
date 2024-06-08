@@ -44,25 +44,18 @@ static constexpr double targetBodyPosZ = 0.5;
 template <typename Scalar = double>
 class AlmProblem {
 public:
-    static constexpr unsigned int D = 6;
-    static constexpr unsigned int Ad = 2;
-    static constexpr unsigned int T = 51;
-    static constexpr double dt = 0.05;
-
-    static constexpr unsigned int dim = T * Ad + (T - 1) * D;
-    static constexpr unsigned int dim_eq = T * D;
-    static constexpr unsigned int dim_ineq = 2 * T * Ad;
-
     using mat_t = Eigen::Matrix<Scalar, -1, -1>;
     using x_t = Eigen::Matrix<Scalar, -1, 1>;
     using g_t = Eigen::Matrix<Scalar, 1, -1>;
 
-    AlmProblem(const ifopt::Problem& nlp) : _dim(static_cast<size_t>(nlp.GetNumberOfOptimizationVariables()))
+    AlmProblem(const ifopt::Problem& nlp) : _nlp(nlp)
     {
-        _nlp = nlp;
-
-        _calc_constr_dims();
+        calc_dims_from_nlp(_nlp);
     }
+
+    size_t dim() const { return _dim; }
+    size_t dim_eq() const { return _dim_eq; }
+    size_t dim_ineq() const { return _dim_ineq; }
 
     Scalar f(const x_t& x)
     {
@@ -78,67 +71,173 @@ public:
         return grad;
     }
 
-    // mat_t ddf(const x_t& x)
-    // {
-    //     mat_t hessian = mat_t::Zero(dim, dim);
-    //     // Action dimensions
-    //     for (unsigned int i = 0; i < T; i++) {
-    //         hessian.block(i * Ad, i * Ad, Ad, Ad) = R;
-    //     }
-    //     // State dimensions
-    //     for (unsigned int i = 0; i < (T - 1); i++) {
-    //         hessian.block(T * Ad + i * D, T * Ad + i * D, D, D) = Q;
-    //     }
-    //
-    //     return hessian;
-    // }
+    mat_t ddf(const x_t& x)
+    {
+        mat_t hessian = mat_t::Identity(_dim, _dim);
+        return hessian;
+    }
 
     x_t c(const x_t& x)
     {
-        if (_neq < 0 || _nin < 0) {
-            // Determine equality and inequality constraint dims.
-            _calc_constr_dims();
-        }
+        x_t out = x_t::Zero(_dim_eq + _dim_ineq);
+        x_t c = x_t::Zero(_dim_eq);
+        x_t g = x_t::Zero(_dim_ineq);
 
-        return x;
-        // return out;
+        _nlp.SetVariables(x.data());
+        fill_constraint_vectors(x, c, g);
+        out << c, g;
+
+        return out;
     }
 
     mat_t dc(const x_t& x)
     {
-        mat_t C = mat_t::Zero(dim_eq + dim_ineq, dim);
-        if (_neq < 0 || _nin < 0) {
-            // Determine equlaity and inequality constraint dims.
-        }
-        return C;
+        mat_t Out = mat_t::Zero(_dim_eq + _dim_ineq, _dim);
+        mat_t C = mat_t::Zero(_dim_eq, _dim);
+        mat_t G = mat_t::Zero(_dim_ineq, _dim);
+
+        _nlp.SetVariables(x.data());
+        fill_constraint_jacobians(C, G);
+
+        Out.block(0, 0, _dim_eq, _dim) = C;
+        Out.block(_dim_eq, 0, _dim_ineq, _dim) = G;
+        return Out;
     }
 
 protected:
-    void _calc_constr_dims()
+    void calc_dims_from_nlp(const ifopt::Problem& nlp)
     {
-        _neq = 0;
-        _nin = 0;
+        _dim = static_cast<size_t>(nlp.GetNumberOfOptimizationVariables());
+
+        _dim_eq = 0;
+        _dim_ineq = 0;
 
         // From constraint sets
-        for (const auto& ct : _nlp.GetConstraints().GetComponents()) {
+        for (const auto& ct : nlp.GetConstraints().GetComponents()) {
             int n = ct->GetRows();
             if (n < 0)
                 continue;
             for (int i = 0; i < n; i++) {
                 auto bounds = ct->GetBounds()[i];
                 if (std::abs(bounds.lower_ - bounds.upper_) < 1e-8) {
-                    ++_neq;
-                    std::cout << "Equality" << " == " << bounds.upper_ << std::endl;
+                    // std::cout << "Equality" << " == " << bounds.upper_ << std::endl;
+                    ++_dim_eq;
                 }
                 else {
                     if (bounds.lower_ > -1e20) {
-                        ++_nin;
-                        std::cout << "Inequality" << " >= " << bounds.lower_ << std::endl;
+                        // std::cout << "Inequality" << " >= " << bounds.lower_ << std::endl;
+                        ++_dim_ineq;
                     }
 
                     if (bounds.upper_ < 1e20) {
-                        ++_nin;
-                        std::cout << "Inequality" << " <= " << bounds.upper_ << std::endl;
+                        // std::cout << "Inequality" << " <= " << bounds.upper_ << std::endl;
+                        ++_dim_ineq;
+                    }
+                }
+            }
+        }
+
+        // From variable bounds
+        const auto& bounds = nlp.GetBoundsOnOptimizationVariables();
+        for (size_t i = 0; i < _dim; ++i) {
+            if (std::abs(bounds[i].lower_ - bounds[i].upper_) < 1e-8) {
+                ++_dim_eq;
+            }
+            else {
+                if (bounds[i].lower_ > -1e20) {
+                    ++_dim_ineq;
+                }
+
+                if (bounds[i].upper_ < 1e20) {
+                    ++_dim_ineq;
+                }
+            }
+        }
+    }
+
+    void fill_constraint_vectors(const x_t& x, x_t& c, x_t& g)
+    {
+        // Fill equality and inequality constraint vectors.
+        size_t next_eq = 0;
+        size_t next_in = 0;
+
+        // From constraint sets
+        for (const auto& ct : _nlp.GetConstraints().GetComponents()) {
+            int n = ct->GetRows();
+            if (n < 0)
+                continue;
+            x_t vals = ct->GetValues();
+            for (int i = 0; i < n; i++) {
+                auto bounds = ct->GetBounds()[i];
+                if (std::abs(bounds.lower_ - bounds.upper_) < 1e-8) {
+                    c[next_eq] = vals[i] - bounds.lower_;
+                    next_eq++;
+                }
+                else {
+                    if (bounds.lower_ > -1e20) {
+                        g[next_in] = vals[i] - bounds.lower_;
+                        next_in++;
+                    }
+
+                    if (bounds.upper_ < 1e20) {
+                        g[next_in] = bounds.upper_ - vals[i];
+                        next_in++;
+                    }
+                }
+            }
+        }
+
+        // From variable bounds
+        const auto& bounds = _nlp.GetBoundsOnOptimizationVariables();
+        for (size_t i = 0; i < _dim; i++) {
+            if (std::abs(bounds[i].lower_ - bounds[i].upper_) < 1e-8) {
+                c[next_eq] = x[i] - bounds[i].lower_;
+                next_eq++;
+            }
+            else {
+                if (bounds[i].lower_ > -1e20) {
+                    g[next_in] = x[i] - bounds[i].lower_;
+                    next_in++;
+                }
+
+                if (bounds[i].upper_ < 1e20) {
+                    g[next_in] = bounds[i].upper_ - x[i];
+                    next_in++;
+                }
+            }
+        }
+    }
+
+    void fill_constraint_jacobians(mat_t& C, mat_t& G) const
+    {
+        // Fill equality and inequality jacobians
+        size_t next_eq = 0;
+        size_t next_in = 0;
+
+        // From constraint sets
+        for (const auto& ct : _nlp.GetConstraints().GetComponents()) {
+            int n = ct->GetRows();
+            if (n < 0)
+                continue;
+            mat_t cons = ct->GetJacobian();
+            for (int i = 0; i < n; i++) {
+                auto bounds = ct->GetBounds()[i];
+                if (std::abs(bounds.lower_ - bounds.upper_) < 1e-8) {
+                    C.row(next_eq) = cons.row(i);
+
+                    next_eq++;
+                }
+                else {
+                    if (bounds.lower_ > -1e20) {
+                        G.row(next_in) = cons.row(i);
+
+                        next_in++;
+                    }
+
+                    if (bounds.upper_ < 1e20) {
+                        G.row(next_in) = -cons.row(i);
+
+                        next_in++;
                     }
                 }
             }
@@ -148,18 +247,18 @@ protected:
         const auto& bounds = _nlp.GetBoundsOnOptimizationVariables();
         for (size_t i = 0; i < _dim; ++i) {
             if (std::abs(bounds[i].lower_ - bounds[i].upper_) < 1e-8) {
-                std::cout << "Equality" << " == " << bounds[i].upper_ << std::endl;
-                ++_neq;
+                C(next_eq, i) = 1.;
+                next_eq++;
             }
             else {
                 if (bounds[i].lower_ > -1e20) {
-                    std::cout << "Inequality" << " >= " << bounds[i].lower_ << std::endl;
-                    ++_nin;
+                    G(next_in, i) = 1.;
+                    next_in++;
                 }
 
                 if (bounds[i].upper_ < 1e20) {
-                    ++_nin;
-                    std::cout << "Inequality" << " <= " << bounds[i].upper_ << std::endl;
+                    G(next_in, i) = -1.;
+                    next_in++;
                 }
             }
         }
@@ -170,30 +269,30 @@ protected:
 
     size_t _dim{0};
 
-    size_t _neq{0}; // Number of equality constraints.
-    size_t _nin{0}; // Number of inequality constraints.
+    size_t _dim_eq{0}; // Number of equality constraints.
+    size_t _dim_ineq{0}; // Number of inequality constraints.
 };
 
 using fit_t = AlmProblem<>;
 using algo_t = numopt::algo::AugmentedLagrangianMethod<fit_t>;
 
-// fit_t::g_t finite_diff(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
-// {
-//     fit_t::g_t fdiff = fit_t::g_t::Zero(x.size());
-//     for (int i = 0; i < x.size(); i++) {
-//         fit_t::x_t xp = x;
-//         xp[i] += eps;
-//         fit_t::x_t xm = x;
-//         xm[i] -= eps;
-//         double fp = f.f(xp);
-//         double fm = f.f(xm);
-//
-//         fdiff[i] = (fp - fm) / (2. * eps);
-//     }
-//
-//     return fdiff;
-// }
-//
+fit_t::g_t finite_diff(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
+{
+    fit_t::g_t fdiff = fit_t::g_t::Zero(x.size());
+    for (int i = 0; i < x.size(); i++) {
+        fit_t::x_t xp = x;
+        xp[i] += eps;
+        fit_t::x_t xm = x;
+        xm[i] -= eps;
+        double fp = f.f(xp);
+        double fm = f.f(xm);
+
+        fdiff[i] = (fp - fm) / (2. * eps);
+    }
+
+    return fdiff;
+}
+
 // fit_t::mat_t finite_diff_hessian(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
 // {
 //     fit_t::mat_t fdiff = fit_t::mat_t::Zero(x.size(), x.size());
@@ -210,23 +309,23 @@ using algo_t = numopt::algo::AugmentedLagrangianMethod<fit_t>;
 //
 //     return fdiff;
 // }
-//
-// fit_t::mat_t finite_diff_dc(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
-// {
-//     fit_t::mat_t fdiff = fit_t::mat_t::Zero(fit_t::dim_eq + fit_t::dim_ineq, fit_t::dim);
-//     for (int i = 0; i < x.size(); i++) {
-//         fit_t::x_t xp = x;
-//         xp[i] += eps;
-//         fit_t::x_t xm = x;
-//         xm[i] -= eps;
-//
-//         fit_t::x_t fp = f.c(xp);
-//         fit_t::x_t fm = f.c(xm);
-//         fdiff.col(i) = (fp - fm) / (2. * eps);
-//     }
-//
-//     return fdiff;
-// }
+
+fit_t::mat_t finite_diff_dc(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
+{
+    fit_t::mat_t fdiff = fit_t::mat_t::Zero(f.dim_eq() + f.dim_ineq(), f.dim());
+    for (int i = 0; i < x.size(); i++) {
+        fit_t::x_t xp = x;
+        xp[i] += eps;
+        fit_t::x_t xm = x;
+        xm[i] -= eps;
+
+        fit_t::x_t fp = f.c(xp);
+        fit_t::x_t fm = f.c(xm);
+        fdiff.col(i) = (fp - fm) / (2. * eps);
+    }
+
+    return fdiff;
+}
 
 int main()
 {
@@ -354,30 +453,31 @@ int main()
     }
 
     fit_t fit(nlp);
-    // algo_t::Params params;
-    // params.dim = fit_t::dim;
-    // params.dim_eq = fit_t::dim_eq;
-    // params.dim_ineq = fit_t::dim_ineq;
-    //
-    // params.initial_x = algo_t::x_t::Zero(fit_t::dim); // Random(fit_t::dim);
-    // // Initialization
+    algo_t::Params params;
+    params.dim = fit.dim();
+    params.dim_eq = fit.dim_eq();
+    params.dim_ineq = fit.dim_ineq();
+
+    params.initial_x = algo_t::x_t::Zero(fit.dim()); // Random(fit_t::dim);
+    // Initialization
     // params.initial_x.head(fit_t::T * fit_t::Ad) = algo_t::x_t::Constant(fit_t::T * fit_t::Ad, fit_t::m * fit_t::g / 2.);
     // for (unsigned int i = 0; i < (fit_t::T - 1); i++) {
     //     params.initial_x.segment(fit_t::T * fit_t::Ad + i * fit_t::D, fit_t::D) = fit.x0 + (fit.xN - fit.x0) * (i + 1) / static_cast<double>(fit_t::T);
     // }
-    // params.initial_lambda = algo_t::x_t::Zero(fit_t::dim_eq + fit_t::dim_ineq);
-    // params.initial_rho = 100.;
-    // params.rho_a = 10.;
+    params.initial_lambda = algo_t::x_t::Zero(fit.dim_eq() + fit.dim_ineq());
+    params.initial_rho = 100.;
+    params.rho_a = 10.;
 
-    // algo_t algo(params);
+    algo_t algo(params, fit);
 
-    std::cout << "Number of variables: " << fit_t::dim << std::endl;
-    std::cout << "Number of equality constraints: " << fit_t::dim_eq << std::endl;
-    std::cout << "Number of inequality constraints: " << fit_t::dim_ineq << std::endl;
+    // std::cout << "Number of variables: " << fit.dim() << std::endl;
+    // std::cout << "Number of equality constraints: " << fit.dim_eq() << std::endl;
+    // std::cout << "Number of inequality constraints: " << fit.dim_ineq() << std::endl;
 
-    std::cout << "f: " << fit.f(nlp.GetVariableValues()) << std::endl;
-    std::cout << "df: " << fit.df(nlp.GetVariableValues()) << std::endl;
-    std::cout << "c: " << fit.c(nlp.GetVariableValues()).transpose() << std::endl;
+    // std::cout << "f: " << fit.f(nlp.GetVariableValues()) << std::endl;
+    // std::cout << "df: " << fit.df(nlp.GetVariableValues()) << std::endl;
+    // std::cout << "c: " << fit.c(nlp.GetVariableValues()).transpose() << std::endl;
+    // std::cout << "dc: " << fit.dc(nlp.GetVariableValues()) << std::endl;
 
     // auto df = fit.df(algo.x());
     // auto df_finite = finite_diff(fit, algo.x());
@@ -397,14 +497,14 @@ int main()
     // std::cout << "c: " << fit.c(algo.x()) << std::endl;
     // std::cout << "dc:\n" << fit.dc(algo.x()) << std::endl;
 
-    // unsigned int iters = 1;
-    // for (unsigned int i = 0; i < iters; ++i) {
-    //     auto log = algo.step();
-    //     std::cout << algo.x().transpose() << " -> " << fit.f(algo.x()) << std::endl;
-    //     std::cout << "f: " << log.f << std::endl;
-    //     std::cout << "c: " << log.c.norm() << std::endl;
-    //     std::cout << " " << log.func_evals << " " << log.cons_evals << " " << log.grad_evals << " " << log.hessian_evals << " " << log.cjac_evals << std::endl;
-    // }
+    unsigned int iters = 100;
+    for (unsigned int i = 0; i < iters; ++i) {
+        auto log = algo.step();
+        // std::cout << algo.x().transpose() << " -> " << fit.f(algo.x()) << std::endl;
+        std::cout << "f: " << log.f << std::endl;
+        std::cout << "c: " << log.c.norm() << std::endl;
+        // std::cout << " " << log.func_evals << " " << log.cons_evals << " " << log.grad_evals << " " << log.hessian_evals << " " << log.cjac_evals << std::endl;
+    }
 
     // fit_t::x_t x = fit.x0;
     // for (size_t k = 0; k < fit_t::T; k++) {
