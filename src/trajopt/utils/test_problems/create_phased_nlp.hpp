@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ifopt/problem.h>
 
 #include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
@@ -22,7 +24,6 @@
 namespace trajopt {
     inline ifopt::Problem create_phased_nlp(size_t numKnots, size_t numSamples, double totalTime, const Eigen::Vector3d& initBodyPos, const Eigen::Vector3d& targetBodyPos, const SingleRigidBodyDynamicsModel& model, const TerrainGrid& terrain)
     {
-        // Add variable sets.
         ifopt::Problem nlp;
 
         double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
