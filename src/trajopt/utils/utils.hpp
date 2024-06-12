@@ -99,4 +99,5 @@ namespace trajopt {
 
         return jac;
     }
+
 } // namespace trajopt

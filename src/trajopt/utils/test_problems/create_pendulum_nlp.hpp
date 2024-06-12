@@ -1,22 +1,23 @@
+#include <ifopt/problem.h>
+
 #include <ifopt/cost_term.h>
 #include <ifopt/variable_set.h>
 
-#define b 0.01
-#define m 1.
-#define l 1.
-#define grav 9.82
+using Eigen::VectorXd;
 
-#define N 20
-#define N_state (N + 1)
+static constexpr size_t N = 20;
+static constexpr size_t N_state = N + 1;
 
-#define DURATION 4.
+static constexpr double b = 0.01;
+static constexpr double m = 1.;
+static constexpr double l = 1.;
+static constexpr double grav = 9.82;
 
-#define DT static_cast<double>(DURATION) / static_cast<double>(N)
+static constexpr double DURATION = 4.;
+static constexpr double DT = static_cast<double>(DURATION) / static_cast<double>(N);
 
-namespace ifopt {
-    using Eigen::VectorXd;
-
-    class InvertedPendulumVariables : public VariableSet {
+namespace trajopt {
+    class InvertedPendulumVariables : public ifopt::VariableSet {
     public:
         InvertedPendulumVariables() : InvertedPendulumVariables("var_set1"){};
         InvertedPendulumVariables(const std::string& name) : VariableSet(2 * N_state + N, name)
@@ -32,7 +33,7 @@ namespace ifopt {
             // Interpolation
             double dist = _values[N_state - 1] - _values[0];
             double avg_vel = dist / DURATION;
-            for (int i = 1; i < N_state - 1; i++) {
+            for (size_t i = 1; i < N_state - 1; ++i) {
                 double p = i / static_cast<double>(N_state - 1);
                 _values[i] = _values[0] + p * _values[N_state - 1];
                 _values[N_state + i] = avg_vel;
@@ -53,19 +54,19 @@ namespace ifopt {
         {
             VecBound bounds(GetRows());
             for (int i = 0; i < GetRows(); i++) {
-                bounds.at(i) = NoBound;
+                bounds.at(i) = ifopt::NoBound;
             }
 
             // Initial state is [0, 0]
-            bounds.at(0) = BoundZero;
-            bounds.at(N_state) = BoundZero;
+            bounds.at(0) = ifopt::BoundZero;
+            bounds.at(N_state) = ifopt::BoundZero;
             // Final state is [pi, 0]
-            bounds.at(N_state - 1) = Bounds(M_PI, M_PI);
-            bounds.at(2 * N_state - 1) = BoundZero;
+            bounds.at(N_state - 1) = ifopt::Bounds(M_PI, M_PI);
+            bounds.at(2 * N_state - 1) = ifopt::BoundZero;
 
             // Actuation bounds
             for (int i = 2 * N_state; i < GetRows(); i++) {
-                bounds.at(i) = Bounds(-2.5, 2.5);
+                bounds.at(i) = ifopt::Bounds(-2.5, 2.5);
             }
 
             return bounds;
@@ -75,7 +76,7 @@ namespace ifopt {
         VectorXd _values;
     };
 
-    class InvertedPendulumCost : public CostTerm {
+    class InvertedPendulumCost : public ifopt::CostTerm {
     public:
         InvertedPendulumCost() : InvertedPendulumCost("cost_term1") {}
         InvertedPendulumCost(const std::string& name) : CostTerm(name) {}
@@ -102,14 +103,14 @@ namespace ifopt {
                 VectorXd valueVector = GetVariables()->GetComponent("var_set1")->GetValues();
                 Eigen::VectorXd u = valueVector.tail(N);
 
-                for (int i = 0; i < u.size(); i++) {
+                for (int i = 0; i < u.size(); ++i) {
                     jac_block.coeffRef(0, 2 * N_state + i) = 2 * u(i);
                 }
             }
         }
     };
 
-    class InvertedPendulumConstraints : public ConstraintSet {
+    class InvertedPendulumConstraints : public ifopt::ConstraintSet {
     public:
         InvertedPendulumConstraints() : InvertedPendulumConstraints("constraint1") {}
 
@@ -125,7 +126,7 @@ namespace ifopt {
 
             double l_squared = l * l;
 
-            for (int i = 0; i < N; i++) {
+            for (size_t i = 0; i < N; ++i) {
                 // q euler integration
                 res(i) = q[i + 1] - (q[i] + qDot[i] * DT);
                 // qDot euler integration
@@ -142,7 +143,7 @@ namespace ifopt {
             // All constraints equal to zero.
             VecBound bounds(GetRows());
             for (int i = 0; i < GetRows(); i++) {
-                bounds.at(i) = BoundZero;
+                bounds.at(i) = ifopt::BoundZero;
             }
             return bounds;
         }
@@ -155,7 +156,7 @@ namespace ifopt {
                 VectorXd x = GetVariables()->GetComponent("var_set1")->GetValues();
                 VectorXd q = x.head(N_state);
 
-                for (int i = 0; i < N; i++) {
+                for (size_t i = 0; i < N; ++i) {
                     // q euler integration derivatives
                     jac_block.coeffRef(i, i) = -1.; // w.r.t. q[i]
                     jac_block.coeffRef(i, i + 1) = 1.; // w.r.t. q[i+1]
@@ -170,4 +171,13 @@ namespace ifopt {
             }
         }
     };
-} // namespace ifopt
+
+    inline ifopt::Problem create_pendulum_nlp()
+    {
+        ifopt::Problem nlp;
+        nlp.AddVariableSet(std::make_shared<trajopt::InvertedPendulumVariables>());
+        nlp.AddConstraintSet(std::make_shared<trajopt::InvertedPendulumConstraints>());
+
+        return nlp;
+    }
+} // namespace trajopt

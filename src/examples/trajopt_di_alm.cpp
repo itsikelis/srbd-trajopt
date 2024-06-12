@@ -1,18 +1,16 @@
 #include <chrono>
 #include <ctime>
 #include <iostream>
-#include <memory>
 
 #include <trajopt/alm/alm.hpp>
 
-#include "alm_problem.hpp"
+#include <trajopt/alm/alm_problem.hpp>
+#include <trajopt/utils/utils.hpp>
 
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
-#include "inverted_pendulum.hpp"
-
-using fit_t = AlmProblem<>;
+using fit_t = alm::AlmProblem<>;
 using algo_t = numopt::algo::AugmentedLagrangianMethod<fit_t>;
 
 // fit_t::g_t finite_diff(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
@@ -70,11 +68,8 @@ int main()
 {
     std::srand(std::time(0));
 
-    // 1. define the problem
-    ifopt::Problem nlp;
-    nlp.AddVariableSet(std::make_shared<ifopt::InvertedPendulumVariables>());
-    nlp.AddConstraintSet(std::make_shared<ifopt::InvertedPendulumConstraints>());
     // nlp.AddCostSet(std::make_shared<ifopt::InvertedPendulumCost>());
+    ifopt::Problem nlp = trajopt::create_pendulum_nlp();
     nlp.PrintCurrent();
 
     fit_t fit(nlp);
