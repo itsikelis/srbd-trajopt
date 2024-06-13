@@ -30,16 +30,25 @@ namespace alm {
         {
             _nlp.SetVariables(x.data()); // TODO: Maybe this is not needed.
             g_t grad = _nlp.EvaluateCostFunctionGradient(x.data());
-            // g_t grad = g_t::Zero(_dim);
 
             return grad;
         }
 
         mat_t ddf(const x_t& x)
         {
-            _nlp.SetVariables(x.data());
-            mat_t hessian = mat_t::Zero(_dim, _dim);
-            return hessian;
+            mat_t fdiff = mat_t::Zero(x.size(), x.size());
+            for (int i = 0; i < x.size(); i++) {
+                x_t xp = x;
+                xp[i] += _eps;
+                x_t xm = x;
+                xm[i] -= _eps;
+
+                g_t fp = df(xp);
+                g_t fm = df(xm);
+                fdiff.row(i) = (fp - fm) / (2. * _eps);
+            }
+
+            return fdiff;
         }
 
         x_t c(const x_t& x)
@@ -230,6 +239,7 @@ namespace alm {
         }
 
     protected:
+        const double _eps{1e-6};
         ifopt::Problem _nlp;
 
         size_t _dim{0};
