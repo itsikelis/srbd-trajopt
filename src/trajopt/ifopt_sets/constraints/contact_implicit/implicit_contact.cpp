@@ -51,8 +51,6 @@ void ImplicitContactConstraints::FillJacobianBlock(std::string var_set, Implicit
             jac_block.middleRows(i, 1) += n[0] * phi * dForce.middleRows(0, 1);
             jac_block.middleRows(i, 1) += n[1] * phi * dForce.middleRows(1, 1);
             jac_block.middleRows(i, 1) += n[2] * phi * dForce.middleRows(2, 1);
-            // jac_block.coeffRef(i, i * 6 + 1) = n[1] * phi;
-            // jac_block.coeffRef(i, i * 6 + 2) = n[2] * phi;
 
             dt += _sampleTime;
         }

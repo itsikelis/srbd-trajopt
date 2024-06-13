@@ -26,21 +26,17 @@
 #include <trajopt/utils/types.hpp>
 #include <trajopt/utils/utils.hpp>
 
-void test_jacobians(const ifopt::Problem& nlp, const std::string& var_set_name, const std::shared_ptr<ifopt::ConstraintSet>& myConstr);
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
-Eigen::VectorXd random_uniform_vector(size_t rows, double lower, double upper)
-{
-    std::uniform_real_distribution<double> unif(lower, upper);
-    std::default_random_engine re;
-    re.seed(time(0));
+static const std::vector<std::string> VarSetNames = {trajopt::BODY_POS_TRAJECTORY, trajopt::BODY_ROT_TRAJECTORY, trajopt::FOOT_POS + "_0", trajopt::FOOT_FORCE + "_0", trajopt::FOOT_POS + "_1", trajopt::FOOT_FORCE + "_1", trajopt::FOOT_POS + "_2", trajopt::FOOT_FORCE + "_2", trajopt::FOOT_POS + "_3", trajopt::FOOT_FORCE + "_3"};
+static const double Tolerance = 1e-5;
+static const bool Viz = false;
 
-    Eigen::VectorXd rand(rows);
-    for (size_t i = 0; i < rows; ++i) {
-        rand[i] = unif(re);
-    }
+void test_constr_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::shared_ptr<ifopt::ConstraintSet>& constr_sets, double tol, bool viz);
 
-    return rand;
-}
+VectorXd random_uniform_vector(size_t rows, double lower, double upper);
 
 int main()
 {
@@ -67,40 +63,31 @@ int main()
 
     double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-    auto polyTimes = Eigen::VectorXd(numKnots - 1);
+    auto polyTimes = VectorXd(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
         polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
     }
 
     // Add body pos and rot var sets.
-    Eigen::Vector3d initBodyPos = Eigen::Vector3d(0., 0., 0.5);
-    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
+    Vector3d initBodyPos = Vector3d(0., 0., 0.5);
+    Vector3d targetBodyPos = Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
-    auto initBodyPosVals = Eigen::VectorXd(3 * 2 * numKnots);
+    auto initBodyPosVals = VectorXd(3 * 2 * numKnots);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
     nlp.AddVariableSet(posVars);
 
-    Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
-    Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
+    Vector3d initRotPos = Vector3d::Zero();
+    Vector3d targetRotPos = Vector3d::Zero();
     ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
-    auto initBodyRotVals = Eigen::VectorXd(3 * 2 * numKnots);
+    auto initBodyRotVals = VectorXd(3 * 2 * numKnots);
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
     nlp.AddVariableSet(rotVars);
-
-    // // Add regular constraint sets.
-    auto dynamConstr = std::make_shared<trajopt::Dynamics<trajopt::PhasedTrajectoryVars>>(model, numSamples, sampleTime);
-    nlp.AddConstraintSet(dynamConstr);
-
-    auto posAccConstr = std::make_shared<trajopt::AccelerationConstraints>(posVars);
-    nlp.AddConstraintSet(posAccConstr);
-    auto rotAccConstr = std::make_shared<trajopt::AccelerationConstraints>(rotVars);
-    nlp.AddConstraintSet(rotAccConstr);
 
     // Add feet pos and force var sets.
     size_t numPosSteps = 2;
     size_t numForceSteps = 1;
-    Eigen::Vector3d phaseTimes = {0.2, 0.1, 0.2};
+    Vector3d phaseTimes = {0.2, 0.1, 0.2};
     std::vector<size_t> posKnotsPerSwing = {3};
     std::vector<size_t> forceKnotsPerSwing = {3, 3};
 
@@ -113,126 +100,132 @@ int main()
     auto initFootPosVals = random_uniform_vector(3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0), 0., 0.5);
     auto initFootForceVals = random_uniform_vector(3 * numForceSteps + 6 * std::accumulate(forceKnotsPerSwing.begin(), forceKnotsPerSwing.end(), 0), 0., 0.5);
 
-    // std::cout << initFootPosVals.rows() << " , " << initFootForceVals.rows() << std::endl;
-    // std::cout << numPhasedKnots << " , " << initFootForceVals.rows() << std::endl;
-
     ifopt::Component::VecBound footPosBounds(3 * numPosSteps + 6 * std::accumulate(posKnotsPerSwing.begin(), posKnotsPerSwing.end(), 0), ifopt::NoBound);
     ifopt::Component::VecBound footForceBounds(3 * numForceSteps + 6 * std::accumulate(forceKnotsPerSwing.begin(), forceKnotsPerSwing.end(), 0), ifopt::Bounds(-max_force, max_force));
 
-    // Add first foot.
-    auto footPosVars0 = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_POS + "_0", initFootPosVals, footPosBounds, phaseTimes, posKnotsPerSwing, trajopt::rspl::Phase::Stance);
-    nlp.AddVariableSet(footPosVars0);
+    for (size_t i = 0; i < model.numFeet; ++i) {
+        // Add initial and final positions for each foot.
+        footPosBounds[0] = (i == 0 || i == 1) ? ifopt::Bounds(0.34, 0.34) : ifopt::Bounds(-0.34, -0.34);
+        footPosBounds[1] = (i == 1 || i == 3) ? ifopt::Bounds(0.19, 0.19) : ifopt::Bounds(-0.19, -0.19);
 
-    auto footPosAccConstr = std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars0);
-    nlp.AddConstraintSet(footPosAccConstr);
+        footPosBounds[footPosBounds.size() - 3] = (i == 0 || i == 1) ? ifopt::Bounds(0.34, 0.34) : ifopt::Bounds(-0.34, -0.34);
+        footPosBounds[footPosBounds.size() - 2] = (i == 1 || i == 3) ? ifopt::Bounds(0.19, 0.19) : ifopt::Bounds(-0.19, -0.19);
 
-    // auto footPosTerrainConstr = std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars0, terrain, numSamples, sampleTime);
-    auto footPosTerrainConstr = std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars0, terrain, numPosSteps, 1, posKnotsPerSwing);
-    nlp.AddConstraintSet(footPosTerrainConstr);
-
-    auto footBodyPosConstr = std::make_shared<trajopt::FootBodyDistancePhased>(model, posVars, rotVars, footPosVars0, numSamples, sampleTime);
-    nlp.AddConstraintSet(footBodyPosConstr);
-
-    auto footForceVars0 = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_0", initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
-    nlp.AddVariableSet(footForceVars0);
-
-    auto footForceFrictionConstr = std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars0, footPosVars0, terrain, numSamples, sampleTime);
-    nlp.AddConstraintSet(footForceFrictionConstr);
-
-    // Add rest of feet.
-    for (size_t i = 1; i < model.numFeet; ++i) {
         auto footPosVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, footPosBounds, phaseTimes, posKnotsPerSwing, trajopt::rspl::Phase::Stance);
         nlp.AddVariableSet(footPosVars);
 
-        nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
-        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing));
-        nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(model, posVars, rotVars, footPosVars, numSamples, sampleTime));
-
         auto footForceVars = std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, phaseTimes, forceKnotsPerSwing, trajopt::rspl::Phase::Swing);
         nlp.AddVariableSet(footForceVars);
-
-        nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, terrain, numSamples, sampleTime));
     }
 
-    // std::string var_set_name = trajopt::BODY_POS_TRAJECTORY;
-    // std::string var_set_name = trajopt::BODY_ROT_TRAJECTORY;
-    std::string var_set_name = trajopt::FOOT_POS + "_0";
-    // std::string var_set_name = trajopt::FOOT_FORCE + "_0";
+    // // Add regular constraint sets.
+    auto dynamConstr = std::make_shared<trajopt::Dynamics<trajopt::PhasedTrajectoryVars>>(model, numSamples, sampleTime);
+    nlp.AddConstraintSet(dynamConstr);
+    test_constr_jacobians(nlp, VarSetNames, dynamConstr, Tolerance, Viz);
 
-    // auto constr_set = dynamConstr;
-    // auto constr_set = posAccConstr;
-    // auto constr_set = rotAccConstr;
+    auto posAccConstr = std::make_shared<trajopt::AccelerationConstraints>(posVars);
+    nlp.AddConstraintSet(posAccConstr);
+    test_constr_jacobians(nlp, VarSetNames, posAccConstr, Tolerance, Viz);
 
-    // auto constr_set = footPosAccConstr;
-    // auto constr_set = footPosAccConstr;
-    auto constr_set = footPosTerrainConstr;
-    // auto constr_set = footBodyPosConstr;
-    // auto constr_set = footForceFrictionConstr;
+    auto rotAccConstr = std::make_shared<trajopt::AccelerationConstraints>(rotVars);
+    nlp.AddConstraintSet(rotAccConstr);
+    test_constr_jacobians(nlp, VarSetNames, rotAccConstr, Tolerance, Viz);
 
-    test_jacobians(nlp, var_set_name, constr_set);
+    for (size_t i = 0; i < model.numFeet; ++i) {
+        auto footPosVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(i)));
+        auto footForceVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(i)));
+
+        auto phasedAccConstr = std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars);
+        nlp.AddConstraintSet(phasedAccConstr);
+        test_constr_jacobians(nlp, VarSetNames, phasedAccConstr, Tolerance, Viz);
+
+        // nlp.AddConstraintSet(std::make_shared<trajopt::FootPosTerrainConstraints>(footPosVars, terrain, numSamples, sampleTime));
+        auto footTerrainDistancePhased = std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, terrain, numPosSteps, 1, posKnotsPerSwing);
+        nlp.AddConstraintSet(footTerrainDistancePhased);
+        test_constr_jacobians(nlp, VarSetNames, footTerrainDistancePhased, Tolerance, Viz);
+
+        auto footBodyDistancePhased = std::make_shared<trajopt::FootBodyDistancePhased>(model, posVars, rotVars, footPosVars, numSamples, sampleTime);
+        nlp.AddConstraintSet(footBodyDistancePhased);
+        test_constr_jacobians(nlp, VarSetNames, footBodyDistancePhased, Tolerance, Viz);
+
+        auto frictionCone = std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, terrain, numSamples, sampleTime);
+        nlp.AddConstraintSet(frictionCone);
+        test_constr_jacobians(nlp, VarSetNames, frictionCone, Tolerance, Viz);
+    }
 
     return 0;
 }
 
-/////// Jacobian Evaluation ////////
-void test_jacobians(const ifopt::Problem& nlp, const std::string& var_set_name, const std::shared_ptr<ifopt::ConstraintSet>& myConstr)
+//////// Jacobian Evaluation ////////
+void test_constr_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::shared_ptr<ifopt::ConstraintSet>& myConstr, double tol, bool viz)
 {
-    // std::string name = trajopt::BODY_POS_TRAJECTORY;
-    // std::string name = trajopt::BODY_ROT_TRAJECTORY;
-    // std::string name = trajopt::PAW_FORCES + "_0";
-    // std::string name = trajopt::PAW_POS + "_0";
-    auto myVars = nlp.GetOptVariables()->GetComponent(var_set_name);
+    for (auto& var_set_name : var_set_names) {
+        auto myVars = nlp.GetOptVariables()->GetComponent(var_set_name);
 
-    // Possible Constraint Sets to test:
-    // dynamConstr
-    // frictionConstr
-    // phasedAccConstr
-    // pawPosTerrainConstr
-    // pawBodyPosConstr
+        // Get Calculated Jacobian.
+        auto jac = Eigen::SparseMatrix<double, Eigen::RowMajor>(myConstr->GetRows(), myVars->GetRows());
+        myConstr->FillJacobianBlock(var_set_name, jac);
+        auto jacDense = MatrixXd(jac);
 
-    // Get Calculated Jacobian.
-    auto jac = Eigen::SparseMatrix<double, Eigen::RowMajor>(myConstr->GetRows(), myVars->GetRows());
-    myConstr->FillJacobianBlock(var_set_name, jac);
-    auto jacDense = Eigen::MatrixXd(jac);
+        // std::cout << jacDense.rows() << ", " << jacDense.cols() << std::endl;
 
-    // std::cout << jacDense.rows() << ", " << jacDense.cols() << std::endl;
+        // Calculate Jacobian using finite differences.
+        MatrixXd myJac(myConstr->GetRows(), myVars->GetRows());
+        double eps = 1e-6;
+        VectorXd vals = myVars->GetValues();
 
-    // Calculate Jacobian using finite differences.
-    Eigen::MatrixXd myJac(myConstr->GetRows(), myVars->GetRows());
-    double eps = 1e-6;
-    Eigen::VectorXd vals = myVars->GetValues();
+        for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx) {
+            VectorXd vals_p = vals;
+            VectorXd vals_m = vals;
+            vals_p[colIdx] += eps;
+            vals_m[colIdx] -= eps;
 
-    for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx) {
-        Eigen::VectorXd vals_p = vals;
-        Eigen::VectorXd vals_m = vals;
-        vals_p[colIdx] += eps;
-        vals_m[colIdx] -= eps;
+            myVars->SetVariables(vals_p);
+            auto dynam_p = myConstr->GetValues();
 
-        myVars->SetVariables(vals_p);
-        auto dynam_p = myConstr->GetValues();
+            myVars->SetVariables(vals_m);
+            auto dynam_m = myConstr->GetValues();
 
-        myVars->SetVariables(vals_m);
-        auto dynam_m = myConstr->GetValues();
+            myJac.col(colIdx) = (dynam_p - dynam_m) / (2 * eps);
+        }
 
-        myJac.col(colIdx) = (dynam_p - dynam_m) / (2 * eps);
-    }
+        // Test if differences are near zero.
+        double err = abs((myJac - jacDense).norm());
+        if (err > tol) {
+            std::cout << "Constraint Set: " << myConstr->GetName() << ", \t";
+            std::cout << "Variable Set: " << var_set_name << ", \t";
+            std::cout << "Norm of difference: " << err << std::endl;
 
-    // Test if differences are near zero.
-    std::cout << "Norm of difference: " << abs((myJac - jacDense).norm()) << std::endl;
-
-    std::cout << std::setprecision(3);
-    for (int i = 0; i < myJac.rows(); i++) {
-        std::cout << "#" << i << std::endl;
-        std::cout << "  Approx: ";
-        for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
-            std::cout << std::setw(8) << std::fixed << myJac(i, colIdx) << " ";
-        std::cout << std::endl;
-        //   << myJac.col(colIdx).transpose() << std::endl;
-        std::cout << "  Actual: ";
-        for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
-            std::cout << std::setw(8) << std::fixed << jacDense(i, colIdx) << " ";
-        std::cout << std::endl;
-        //   << jacDense.col(colIdx).transpose() << std::endl;
+            if (viz) {
+                std::cout << std::setprecision(3);
+                for (int i = 0; i < myJac.rows(); i++) {
+                    std::cout << "#" << i << std::endl;
+                    std::cout << "  Approx: ";
+                    for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                        std::cout << std::setw(8) << std::fixed << myJac(i, colIdx) << " ";
+                    std::cout << std::endl;
+                    //   << myJac.col(colIdx).transpose() << std::endl;
+                    std::cout << "  Actual: ";
+                    for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                        std::cout << std::setw(8) << std::fixed << jacDense(i, colIdx) << " ";
+                    std::cout << std::endl;
+                    //   << jacDense.col(colIdx).transpose() << std::endl;
+                }
+            }
+        }
     }
 }
+
+VectorXd random_uniform_vector(size_t rows, double lower, double upper)
+{
+    std::uniform_real_distribution<double> unif(lower, upper);
+    std::default_random_engine re;
+    re.seed(time(0));
+
+    VectorXd rand(rows);
+    for (size_t i = 0; i < rows; ++i) {
+        rand[i] = unif(re);
+    }
+
+    return rand;
+} ////// Jacobian Evaluation ////////

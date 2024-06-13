@@ -61,8 +61,7 @@ FootTerrainDistancePhased::VecBound FootTerrainDistancePhased::GetBounds() const
 void FootTerrainDistancePhased::FillJacobianBlock(std::string var_set, FootTerrainDistancePhased::Jacobian& jac_block) const
 {
     if (var_set == _varsName) {
-        auto vars = std::static_pointer_cast<PhasedTrajectoryVars>(
-            GetVariables()->GetComponent(_varsName));
+        Eigen::VectorXd vars = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varsName))->GetValues();
 
         bool standing = std::static_pointer_cast<PhasedTrajectoryVars>(GetVariables()->GetComponent(_varsName))->standingAt(0.);
         size_t rowIdx = 0;
@@ -74,15 +73,28 @@ void FootTerrainDistancePhased::FillJacobianBlock(std::string var_set, FootTerra
         // zero.
         size_t sIdx = 0;
         for (size_t i = 0; i < _numPhases; ++i) {
+
             if (standing) {
-                jac_block.coeffRef(rowIdx++, colIdx + 2) = 1.;
+                Eigen::VectorXd pos = vars.segment(colIdx, 3);
+                auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+
+                jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_d[0];
+                jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_d[1];
+                jac_block.coeffRef(rowIdx, colIdx + 2) = 1.;
+                rowIdx++;
                 colIdx += 3;
             }
             else {
+                Eigen::VectorXd pos = vars.segment(colIdx, 3);
+                auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+
                 size_t swingKnots = _numKnotsPerSwing[sIdx];
                 sIdx++;
                 for (size_t k = 0; k < swingKnots; ++k) {
-                    jac_block.coeffRef(rowIdx++, colIdx + 2) = 1.;
+                    jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_d[0];
+                    jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_d[1];
+                    jac_block.coeffRef(rowIdx, colIdx + 2) = 1.;
+                    rowIdx++;
                     colIdx += 6;
                 }
             }
