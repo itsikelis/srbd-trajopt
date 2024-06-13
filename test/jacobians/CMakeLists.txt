@@ -18,3 +18,14 @@ target_link_libraries(jac_test_implicit PUBLIC ${PROJECT_NAME})
 
 target_compile_options(jac_test_implicit PRIVATE "-Wall;-Wextra;-O3")
 target_compile_definitions(jac_test_implicit PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+# Augmented Lagrangian Jacobian tests
+add_executable(jac_test_alm jac_test_alm.cpp)
+
+target_include_directories(jac_test_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
+
+# Link libraries and add compiler options
+target_link_libraries(jac_test_alm PUBLIC ${PROJECT_NAME})
+
+target_compile_options(jac_test_alm PRIVATE "-Wall;-Wextra;-O3")
+target_compile_definitions(jac_test_alm PUBLIC "SRCPATH=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

@@ -40,57 +40,6 @@ static constexpr double targetBodyPosZ = 0.5;
 using fit_t = alm ::AlmProblem<>;
 using algo_t = numopt::algo::AugmentedLagrangianMethod<fit_t>;
 
-// fit_t::g_t finite_diff(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
-// {
-//     fit_t::g_t fdiff = fit_t::g_t::Zero(x.size());
-//     for (int i = 0; i < x.size(); i++) {
-//         fit_t::x_t xp = x;
-//         xp[i] += eps;
-//         fit_t::x_t xm = x;
-//         xm[i] -= eps;
-//         double fp = f.f(xp);
-//         double fm = f.f(xm);
-//
-//         fdiff[i] = (fp - fm) / (2. * eps);
-//     }
-//
-//     return fdiff;
-// }
-
-// fit_t::mat_t finite_diff_hessian(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
-// {
-//     fit_t::mat_t fdiff = fit_t::mat_t::Zero(x.size(), x.size());
-//     for (int i = 0; i < x.size(); i++) {
-//         fit_t::x_t xp = x;
-//         xp[i] += eps;
-//         fit_t::x_t xm = x;
-//         xm[i] -= eps;
-//
-//         fit_t::g_t fp = f.df(xp);
-//         fit_t::g_t fm = f.df(xm);
-//         fdiff.row(i) = (fp - fm) / (2. * eps);
-//     }
-//
-//     return fdiff;
-// }
-
-// fit_t::mat_t finite_diff_dc(fit_t& f, const fit_t::x_t& x, double eps = 1e-6)
-// {
-//     fit_t::mat_t fdiff = fit_t::mat_t::Zero(f.dim_eq() + f.dim_ineq(), f.dim());
-//     for (int i = 0; i < x.size(); i++) {
-//         fit_t::x_t xp = x;
-//         xp[i] += eps;
-//         fit_t::x_t xm = x;
-//         xm[i] -= eps;
-//
-//         fit_t::x_t fp = f.c(xp);
-//         fit_t::x_t fm = f.c(xm);
-//         fdiff.col(i) = (fp - fm) / (2. * eps);
-//     }
-//
-//     return fdiff;
-// }
-
 int main()
 {
     std::srand(std::time(0));
@@ -105,9 +54,9 @@ int main()
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(initBodyPosX, initBodyPosY));
     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(targetBodyPosX, targetBodyPosY));
 
+    ifopt::Problem nlp = create_phased_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
     // ifopt::Problem nlp = create_implicit_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
-    // ifopt::Problem nlp = create_phased_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
-    ifopt::Problem nlp = trajopt::create_pendulum_nlp();
+    // ifopt::Problem nlp = trajopt::create_pendulum_nlp();
 
     fit_t fit(nlp);
     algo_t::Params params;
@@ -136,28 +85,10 @@ int main()
     // std::cout << "c: " << fit.c(nlp.GetVariableValues()).transpose() << std::endl;
     // std::cout << "dc: " << fit.dc(nlp.GetVariableValues()) << std::endl;
 
-    // auto df = fit.df(algo.x());
-    // auto df_finite = finite_diff(fit, algo.x());
-    // std::cout << "df: " << (df - df_finite).norm() << std::endl;
-    // auto ddf = fit.ddf(algo.x());
-    // auto ddf_finite = finite_diff_hessian(fit, algo.x());
-    // std::cout << "ddf: " << (ddf - ddf_finite).norm() << std::endl;
-    // auto dc = fit.dc(algo.x());
-    // auto dc_finite = finite_diff_dc(fit, algo.x());
-    // std::cout << "dc: " << (dc - dc_finite).norm() << std::endl;
-
-    // std::cout << "f: " << fit.f(algo.x()) << std::endl;
-    // std::cout << "df: " << fit.df(algo.x()) << std::endl;
-    // std::cout << "df: " << finite_diff(fit, algo.x()) << std::endl;
-    // std::cout << "ddf:\n" << fit.ddf(algo.x()) << std::endl;
-    // std::cout << "ddf:\n" << finite_diff_hessian(fit, algo.x()) << std::endl;
-    // std::cout << "c: " << fit.c(algo.x()) << std::endl;
-    // std::cout << "dc:\n" << fit.dc(algo.x()) << std::endl;
-
     // Solve.
     auto tStart = std::chrono::high_resolution_clock::now();
 
-    unsigned int iters = 10;
+    unsigned int iters = 100;
     for (unsigned int i = 0; i < iters; ++i) {
         auto log = algo.step();
         // std::cout << algo.x().transpose() << " -> " << fit.f(algo.x()) << std::endl;
