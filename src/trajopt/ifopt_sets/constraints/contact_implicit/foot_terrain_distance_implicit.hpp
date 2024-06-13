@@ -8,7 +8,7 @@
 namespace trajopt {
     class FootTerrainDistanceImplicit : public ifopt::ConstraintSet {
     public:
-        FootTerrainDistanceImplicit(const std::shared_ptr<TrajectoryVars>& pos_vars, const trajopt::TerrainGrid& terrain, size_t num_knots);
+        FootTerrainDistanceImplicit(const std::shared_ptr<TrajectoryVars>& posVars, const trajopt::TerrainGrid& terrain, size_t numSamples, double sampleTime);
 
         VectorXd GetValues() const override;
 
@@ -19,5 +19,8 @@ namespace trajopt {
     protected:
         const std::string _posVarsName;
         const trajopt::TerrainGrid _terrain;
+
+        size_t _numSamples;
+        double _sampleTime;
     };
 } // namespace trajopt

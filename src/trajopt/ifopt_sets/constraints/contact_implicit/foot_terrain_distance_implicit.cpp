@@ -2,20 +2,30 @@
 
 using namespace trajopt;
 
-FootTerrainDistanceImplicit::FootTerrainDistanceImplicit(const std::shared_ptr<TrajectoryVars>& pos_vars, const trajopt::TerrainGrid& terrain, size_t num_knots)
-    : ConstraintSet(num_knots, pos_vars->GetName() + "_foot_terrain_distance"), _posVarsName(pos_vars->GetName()), _terrain(terrain) {}
+FootTerrainDistanceImplicit::FootTerrainDistanceImplicit(const std::shared_ptr<TrajectoryVars>& posVars,
+    const trajopt::TerrainGrid& terrain,
+    size_t numSamples,
+    double sampleTime)
+    : ConstraintSet(numSamples, posVars->GetName() + "_foot_terrain_distance"),
+      _posVarsName(posVars->GetName()),
+      _terrain(terrain),
+      _numSamples(numSamples),
+      _sampleTime(sampleTime) {}
 
 FootTerrainDistanceImplicit::VectorXd FootTerrainDistanceImplicit::GetValues() const
 {
     VectorXd g = VectorXd::Zero(GetRows());
 
-    auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
+    auto vars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
-    for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
-        Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
+    double t = 0.;
+    for (size_t i = 0; i < _numSamples; ++i) {
+        Eigen::VectorXd pos = vars->trajectoryEval(t, 0);
 
         double phi = pos[2] - _terrain.height(pos[0], pos[1]);
         g[i] = phi;
+
+        t += _sampleTime;
     }
 
     return g;
@@ -29,17 +39,23 @@ FootTerrainDistanceImplicit::VecBound FootTerrainDistanceImplicit::GetBounds() c
 
 void FootTerrainDistanceImplicit::FillJacobianBlock(std::string var_set, FootTerrainDistanceImplicit::Jacobian& jac_block) const
 {
-    auto pos_knots = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName))->GetValues();
+    auto vars = std::static_pointer_cast<TrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
     if (var_set == _posVarsName) {
-        for (size_t i = 0; i < static_cast<size_t>(GetRows()); ++i) {
-            Eigen::VectorXd pos = pos_knots.segment(i * 6, 3);
+        double t = 0.;
+        for (size_t i = 0; i < _numSamples; ++i) {
+            Eigen::VectorXd pos = vars->trajectoryEval(t, 0);
+            Jacobian dPos = vars->trajectoryJacobian(t, 0);
 
             auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
 
-            jac_block.coeffRef(i, i * 6) = -terrain_d[0];
-            jac_block.coeffRef(i, i * 6 + 1) = -terrain_d[1];
-            jac_block.coeffRef(i, i * 6 + 2) = 1.;
+            Eigen::Vector3d grad = Eigen::Vector3d(-terrain_d[0], -terrain_d[1], 1.);
+
+            jac_block.middleRows(i, 1) = -terrain_d[0] * dPos.middleRows(0, 1);
+            jac_block.middleRows(i, 1) = -terrain_d[1] * dPos.middleRows(1, 1);
+            jac_block.middleRows(i, 1) = 1. * dPos.middleRows(2, 1);
+
+            t += _sampleTime;
         }
     }
 }

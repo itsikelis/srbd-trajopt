@@ -135,7 +135,7 @@ int main()
         nlp.AddConstraintSet(footBodyDistConstr);
         test_constr_jacobians(nlp, VarSetNames, footBodyDistConstr, Tolerance, Viz);
 
-        auto footDistTerrainConstr = std::make_shared<trajopt::FootTerrainDistanceImplicit>(footPosVars, terrain, numKnots);
+        auto footDistTerrainConstr = std::make_shared<trajopt::FootTerrainDistanceImplicit>(footPosVars, terrain, numSamples, sampleTime);
         nlp.AddConstraintSet(footDistTerrainConstr);
         test_constr_jacobians(nlp, VarSetNames, footDistTerrainConstr, Tolerance, Viz);
 
