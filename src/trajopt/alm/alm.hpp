@@ -4,6 +4,8 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+#include <iostream>
+
 namespace numopt {
     namespace algo {
 
@@ -306,8 +308,9 @@ namespace numopt {
                     compute_residual();
 
                     iter++;
-                    if (iter >= _params.newton_max_iters || delta_x.norm() <= _params.newton_eps)
+                    if (iter >= _params.newton_max_iters || delta_x.norm() <= _params.newton_eps) {
                         break;
+                    }
                 }
 
                 return {x_k, c};

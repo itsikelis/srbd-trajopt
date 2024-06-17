@@ -2,19 +2,16 @@
 #include <ctime>
 #include <iostream>
 
-#include <Eigen/Dense>
-
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
 #include <trajopt/srbd/srbd.hpp>
 #include <trajopt/terrain/terrain_grid.hpp>
 
-#include <trajopt/utils/utils.hpp>
-
 #include <trajopt/utils/test_problems/create_implicit_nlp.hpp>
 #include <trajopt/utils/test_problems/create_pendulum_nlp.hpp>
 #include <trajopt/utils/test_problems/create_phased_nlp.hpp>
+#include <trajopt/utils/utils.hpp>
 #include <trajopt/utils/visualisation.hpp>
 
 static constexpr size_t numKnots = 10;

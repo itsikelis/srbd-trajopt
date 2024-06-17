@@ -2,6 +2,7 @@
 #include <ctime>
 #include <iostream>
 
+#include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
 
 #include <trajopt/alm/alm.hpp>
@@ -52,20 +53,32 @@ int main()
     // ifopt::Problem nlp = create_implicit_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
     // ifopt::Problem nlp = trajopt::create_pendulum_nlp();
 
+    // Solve nlp with ipopt and pass it to augmented lagrangian
+    std::cout << "Solving.." << std::endl;
+    ifopt::IpoptSolver ipopt;
+    ipopt.SetOption("jacobian_approximation", "exact");
+    ipopt.SetOption("max_cpu_time", 1e50);
+    ipopt.SetOption("max_iter", static_cast<int>(1000));
+    ipopt.Solve(nlp);
+
+    // Solve with ALM
     fit_t fit(nlp);
     algo_t::Params params;
     params.dim = fit.dim();
     params.dim_eq = fit.dim_eq();
     params.dim_ineq = fit.dim_ineq();
 
-    params.initial_x = algo_t::x_t::Zero(fit.dim()); // Random(fit_t::dim);
+    // params.initial_x = algo_t::x_t::Zero(fit.dim()); // Random(fit_t::dim);
     // Initialization
-    // params.initial_x.head(fit_t::T * fit_t::Ad) = algo_t::x_t::Constant(fit_t::T * fit_t::Ad, fit_t::m * fit_t::g / 2.);
-    // for (unsigned int i = 0; i < (fit_t::T - 1); i++) {
-    //     params.initial_x.segment(fit_t::T * fit_t::Ad + i * fit_t::D, fit_t::D) = fit.x0 + (fit.xN - fit.x0) * (i + 1) / static_cast<double>(fit_t::T);
-    // }
+    params.initial_x = nlp.GetVariableValues();
+    size_t vals = 10;
+    for (size_t i = 0; i < vals; ++i) {
+        params.initial_x[(rand() % fit.dim())] += 0.1;
+    }
+
     params.initial_lambda = algo_t::x_t::Zero(fit.dim_eq() + fit.dim_ineq());
-    params.initial_rho = 100.;
+    params.max_rho = 1e10;
+    params.initial_rho = 1e6;
     params.rho_a = 10.;
 
     algo_t algo(params, fit);
@@ -82,7 +95,7 @@ int main()
     // Solve.
     auto tStart = std::chrono::high_resolution_clock::now();
 
-    unsigned int iters = 100;
+    unsigned int iters = 1200;
     for (unsigned int i = 0; i < iters; ++i) {
         auto log = algo.step();
         // std::cout << algo.x().transpose() << " -> " << fit.f(algo.x()) << std::endl;
