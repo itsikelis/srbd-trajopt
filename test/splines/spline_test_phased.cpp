@@ -9,6 +9,7 @@
 #include <trajopt/robo_spline/cubic_hermite_spline.hpp>
 #include <trajopt/robo_spline/phased_trajectory.hpp>
 #include <trajopt/robo_spline/trajectory.hpp>
+#include <vector>
 
 namespace rspl = trajopt::rspl;
 
@@ -35,14 +36,14 @@ Eigen::VectorXd random_uniform_vector(size_t rows, double lower, double upper)
 
 // Test calculated.
 template <typename _Traj>
-bool test_duration(const _Traj& traj, const Eigen::VectorXd& times)
+bool test_duration(const _Traj& traj, const std::vector<double>& times)
 {
     // std::cout << "Trajectory Duration Test" << std::endl;
     // std::cout << "Times: " << std::endl;
     // std::cout << times.transpose() << std::endl;
     // std::cout << "Duration 1, Duration 2 " << std::endl;
     // std::cout << times.sum() << ", " << traj.duration() << " (these should be approx. equal)" << std::endl;
-    return (std::abs(times.sum() - traj.duration()) < eps);
+    return (std::abs(std::accumulate(times.begin(), times.end(), 0.) - traj.duration()) < eps);
 }
 
 // Test calculated.
@@ -78,12 +79,12 @@ bool test_splines(const _Traj& traj)
 
 // Compare calculated with estimated Jacobians
 template <typename _Traj>
-bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const Eigen::VectorXd& times, const std::vector<size_t>& phase_knots, rspl::Phase InitPhase)
+bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const std::vector<double>& times, const std::vector<size_t>& phase_knots, rspl::Phase InitPhase)
 {
     bool flag = true;
-    Eigen::VectorXd test_times(times.rows() - 1);
+    Eigen::VectorXd test_times(times.size() - 1);
 
-    for (size_t i = 0; i < static_cast<size_t>(times.rows()) - 1; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(times.size()) - 1; ++i) {
         if (i == 0) {
             test_times[i] = (times[i + 1] - times[i]) / 2.;
             continue;
@@ -141,9 +142,15 @@ int main()
 {
     // Eigen::VectorXd knots((NumStancePhases * Dim) + (NumSwingPhases * NumKnotsPerSwing * 2 * Dim));
     Eigen::VectorXd knots = random_uniform_vector((NumStancePhases * Dim) + (NumSwingPhases * NumKnotsPerSwing * 2 * Dim), -10., 10.);
-    Eigen::VectorXd phase_times = random_uniform_vector(NumStancePhases + NumSwingPhases, 0.5, 1.);
 
-    // knots << 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9;
+    std::random_device rnd_device;
+    std::mt19937 mersenne_engine{rnd_device()}; // Generates random integers
+    std::uniform_real_distribution<double> dist{0.5, 1.};
+    auto gen = [&dist, &mersenne_engine]() {
+        return dist(mersenne_engine);
+    };
+    std::vector<double> phase_times(NumStancePhases + NumSwingPhases);
+    std::generate(begin(phase_times), end(phase_times), gen);
 
     double val = 0.;
     for (size_t i = 0; i < static_cast<size_t>(knots.rows()); ++i) {

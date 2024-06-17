@@ -87,7 +87,7 @@ int main()
     // Add feet pos and force var sets.
     size_t numPosSteps = 2;
     size_t numForceSteps = 1;
-    Vector3d phaseTimes = {0.2, 0.1, 0.2};
+    std::vector<double> phaseTimes = {0.2, 0.1, 0.2};
     std::vector<size_t> posKnotsPerSwing = {3};
     std::vector<size_t> forceKnotsPerSwing = {3, 3};
 
