@@ -16,11 +16,11 @@ namespace trajopt::rspl {
     public:
         PhasedTrajectory() : Trajectory<_Dim>() {}
 
-        PhasedTrajectory(const Vector& knot_points, const Vector& phase_times,
+        PhasedTrajectory(const Vector& knot_points, const std::vector<double>& phase_times,
             const std::vector<size_t>& knots_per_swing, Phase init_phase)
             : Trajectory<_Dim>(knot_points.rows())
         {
-            size_t num_phases = phase_times.rows();
+            size_t num_phases = phase_times.size();
             size_t num_swing_phases = knots_per_swing.size();
             size_t num_stance_phases = num_phases - num_swing_phases;
 

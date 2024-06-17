@@ -13,7 +13,7 @@ namespace trajopt {
     public:
         using Jacobian = ifopt::Component::Jacobian;
 
-        TrajectoryVars(const std::string& name, const Eigen::VectorXd& initVals, const Eigen::VectorXd& splineTimes, const VecBound& bounds)
+        TrajectoryVars(const std::string& name, const Eigen::VectorXd& initVals, const std::vector<double>& splineTimes, const VecBound& bounds)
             : VariableSet(kSpecifyLater, name), _values(initVals), _bounds(bounds), _splineTimes(splineTimes)
         {
             // SetVariables(Eigen::VectorXd::Random(GetRows())); // initialize to zero
@@ -46,7 +46,7 @@ namespace trajopt {
     protected:
         Eigen::VectorXd _values;
         VecBound _bounds;
-        Eigen::VectorXd _splineTimes;
+        std::vector<double> _splineTimes;
 
         rspl::Trajectory<3> _traj;
     };

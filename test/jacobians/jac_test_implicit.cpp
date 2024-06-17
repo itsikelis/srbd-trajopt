@@ -63,7 +63,7 @@ int main()
 
     double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-    auto polyTimes = VectorXd(numKnots - 1);
+    std::vector<double> polyTimes = std::vector<double>(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
         polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
     }

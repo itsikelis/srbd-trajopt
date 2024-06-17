@@ -63,7 +63,7 @@ int main()
 
     double totalTime = 0.5;
     double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-    auto polyTimes = VectorXd(numKnots - 1);
+    std::vector<double> polyTimes = std::vector<double>(numKnots - 1);
     for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
         polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
     }
@@ -87,7 +87,7 @@ int main()
     // Add feet pos and force var sets.
     size_t numPosSteps = 2;
     size_t numForceSteps = 1;
-    Vector3d phaseTimes = {0.2, 0.1, 0.2};
+    std::vector<double> phaseTimes = {0.2, 0.1, 0.2};
     std::vector<size_t> posKnotsPerSwing = {3};
     std::vector<size_t> forceKnotsPerSwing = {3, 3};
 

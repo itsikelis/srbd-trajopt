@@ -27,7 +27,7 @@ namespace trajopt {
         ifopt::Problem nlp;
 
         double sampleTime = totalTime / static_cast<double>(numSamples - 1.);
-        Eigen::VectorXd polyTimes = Eigen::VectorXd::Zero(numKnots - 1);
+        std::vector<double> polyTimes = std::vector<double>(numKnots - 1);
         for (size_t i = 0; i < static_cast<size_t>(polyTimes.size()); ++i) {
             polyTimes[i] = totalTime / static_cast<double>(numKnots - 1);
         }
@@ -55,7 +55,7 @@ namespace trajopt {
         // Add feet pos and force var sets.
         size_t numPosSteps = 2;
         size_t numForceSteps = 1;
-        Eigen::Vector3d phaseTimes = {0.2, 0.1, 0.2};
+        std::vector<double> phaseTimes = {0.2, 0.1, 0.2};
         std::vector<size_t> posKnotsPerSwing = {1};
         std::vector<size_t> forceKnotsPerSwing = {5, 5};
 

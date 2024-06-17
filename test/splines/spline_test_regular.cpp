@@ -8,6 +8,7 @@
 
 #include <trajopt/robo_spline/cubic_hermite_spline.hpp>
 #include <trajopt/robo_spline/trajectory.hpp>
+#include <vector>
 
 namespace rspl = trajopt::rspl;
 
@@ -31,13 +32,13 @@ Eigen::VectorXd random_uniform_vector(size_t rows, double lower, double upper)
 
 // Test calculated.
 template <typename _Traj>
-bool test_duration(const _Traj& traj, const Eigen::VectorXd& times)
+bool test_duration(const _Traj& traj, const std::vector<double>& times)
 {
     // std::cout << "Trajectory Duration Test" << std::endl;
 
     // std::cout << "Duration 1, Duration 2 " << std::endl;
     // std::cout << times.sum() << ", " << traj.duration() << " (these should be approx. equal)" << std::endl;
-    return (std::abs(times.sum() - traj.duration()) < eps);
+    return (std::abs(std::accumulate(times.begin(), times.end(), 0.) - traj.duration()) < eps);
 }
 
 // Test pos and vel at knot points are approximately equal.
@@ -47,26 +48,26 @@ bool test_splines(const _Traj& traj)
     bool flag = true;
 
     for (size_t deriv_order = 0; deriv_order < 2; ++deriv_order) {
-      
-      for (size_t i = 0; i < traj.num_knot_points() - 2; i++) {
-        double T = traj.spline(i)->duration();
-        auto pos1 = traj.spline(i)->eval(T, deriv_order);
-        auto pos2 = traj.spline(i + 1)->eval(0., deriv_order);
-        auto res = std::abs((pos1 - pos2).norm());
-        if (res > eps)
-            flag = false;
-      }
+
+        for (size_t i = 0; i < traj.num_knot_points() - 2; i++) {
+            double T = traj.spline(i)->duration();
+            auto pos1 = traj.spline(i)->eval(T, deriv_order);
+            auto pos2 = traj.spline(i + 1)->eval(0., deriv_order);
+            auto res = std::abs((pos1 - pos2).norm());
+            if (res > eps)
+                flag = false;
+        }
     }
     return flag;
 }
 
 // Compare calculated with estimated Jacobians
 template <typename _Traj>
-bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const Eigen::VectorXd& times)
+bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const std::vector<double>& times)
 {
     bool flag = true;
-    Eigen::VectorXd test_times(times.rows() - 1);
-    for (size_t i = 0; i < static_cast<size_t>(times.rows()) - 1; ++i) {
+    Eigen::VectorXd test_times(times.size() - 1);
+    for (size_t i = 0; i < static_cast<size_t>(times.size()) - 1; ++i) {
         if (i == 0) {
             test_times[i] = (times[i + 1] - times[i]) / 2.;
             continue;
@@ -92,7 +93,6 @@ bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const Eigen
 
                 auto traj_p = rspl::Trajectory<Dim>(knots_p, times);
                 auto traj_m = rspl::Trajectory<Dim>(knots_m, times);
-                
 
                 auto pos_p = traj_p.eval(t, order);
                 auto pos_m = traj_m.eval(t, order);
@@ -127,7 +127,15 @@ int main()
     srand(static_cast<size_t>(time(0)));
     // for (size_t iters = 0; iters < 1000; ++iters) {
     Eigen::VectorXd knots = random_uniform_vector(NumKnotPoints * 2 * Dim, -10., 10.);
-    Eigen::VectorXd times = random_uniform_vector(NumKnotPoints - 1, 0., 3.);
+
+    std::random_device rnd_device;
+    std::mt19937 mersenne_engine{rnd_device()}; // Generates random integers
+    std::uniform_real_distribution<double> dist{0., 3.};
+    auto gen = [&dist, &mersenne_engine]() {
+        return dist(mersenne_engine);
+    };
+    std::vector<double> times(NumKnotPoints - 1);
+    std::generate(begin(times), end(times), gen);
 
     rspl::Trajectory<Dim> traj(knots, times);
 
@@ -142,8 +150,8 @@ int main()
     }
 
     if (!test_jacobians(traj, knots, times)) {
-      std::cerr << "Test Failed: test_jacobians" << std::endl;
-      return -1;
+        std::cerr << "Test Failed: test_jacobians" << std::endl;
+        return -1;
     }
     // }
 

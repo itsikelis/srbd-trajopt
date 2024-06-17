@@ -13,7 +13,7 @@ namespace trajopt {
     public:
         using Jacobian = ifopt::Component::Jacobian;
 
-        PhasedTrajectoryVars(const std::string& name, const Eigen::VectorXd& initVals, const VecBound& bounds, const Eigen::VectorXd& phaseTimes, const std::vector<size_t>& knotsPerSwing, rspl::Phase initPhase)
+        PhasedTrajectoryVars(const std::string& name, const Eigen::VectorXd& initVals, const VecBound& bounds, const std::vector<double>& phaseTimes, const std::vector<size_t>& knotsPerSwing, rspl::Phase initPhase)
             : VariableSet(kSpecifyLater, name), _values(initVals), _bounds(bounds), _phaseTimes(phaseTimes), _knotsPerSwing(knotsPerSwing), _initPhase(initPhase)
         {
             SetVariables(initVals);
@@ -48,7 +48,7 @@ namespace trajopt {
     protected:
         Eigen::VectorXd _values;
         VecBound _bounds;
-        Eigen::VectorXd _phaseTimes;
+        std::vector<double> _phaseTimes;
         std::vector<size_t> _knotsPerSwing;
         rspl::Phase _initPhase;
 

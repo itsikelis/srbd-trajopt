@@ -4,6 +4,7 @@
 
 #include <cassert>
 
+#include <numeric>
 #include <trajopt/robo_spline/component.hpp>
 #include <trajopt/robo_spline/cubic_hermite_spline.hpp>
 #include <trajopt/robo_spline/types.hpp>
@@ -20,7 +21,7 @@ namespace trajopt::rspl {
 
         Trajectory(size_t num_vars) : Component<_Dim>(), _num_vars(num_vars), _num_knot_points(num_vars / (2 * _Dim)) {}
 
-        Trajectory(const Vector& knot_points, const Vector& spline_times) : Component<_Dim>(spline_times.sum()), _num_vars(knot_points.rows()), _num_knot_points(spline_times.rows() + 1)
+        Trajectory(const Vector& knot_points, const std::vector<Time>& spline_times) : Component<_Dim>(std::accumulate(spline_times.begin(), spline_times.end(), 0.)), _num_vars(knot_points.rows()), _num_knot_points(spline_times.size() + 1)
         {
             // Assert knot_points and times size are correct.
             // if (static_cast<size_t>(knot_points.rows()) != _Dim * 2 * (spline_times.rows() + 1)) {
@@ -29,7 +30,7 @@ namespace trajopt::rspl {
             // }
 
             // std::string message = "Knot points vector should be: " + std::to_string(_Dim * 2 * (_num_knot_points)) + " rows long, but is " + std::to_string(knot_points.rows()) + " instead.";
-            assert(static_cast<size_t>(knot_points.rows()) == _Dim * 2 * (spline_times.rows() + 1));
+            assert(static_cast<size_t>(knot_points.rows()) == _Dim * 2 * (spline_times.size() + 1));
 
             // Generate Trajectory from knot points.
             const size_t num_splines = _num_knot_points - 1;
