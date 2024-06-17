@@ -1,6 +1,6 @@
-#include <chrono>
 #include <ctime>
-#include <iostream>
+
+#include <Eigen/Core>
 
 #include <ifopt/ipopt_solver.h>
 #include <ifopt/problem.h>
@@ -14,19 +14,9 @@
 #include <trajopt/utils/utils.hpp>
 #include <trajopt/utils/visualisation.hpp>
 
-static constexpr size_t numKnots = 10;
-static constexpr size_t numSamples = 16;
+#include <trajopt/srbd_trajopt.hpp>
 
-static constexpr double totalTime = 0.5;
-
-// Body position
-static constexpr double initBodyPosX = 0.;
-static constexpr double initBodyPosY = 0.;
-static constexpr double initBodyPosZ = 0.5;
-
-static constexpr double targetBodyPosX = 0.2;
-static constexpr double targetBodyPosY = 0.;
-static constexpr double targetBodyPosZ = 0.5;
+#include <trajopt/robo_spline/types.hpp>
 
 int main()
 {
@@ -34,74 +24,123 @@ int main()
 
     trajopt::SingleRigidBodyDynamicsModel model;
     trajopt::init_model_anymal(model);
-    // trajopt::init_model_biped(model);
 
     trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
     terrain.set_zero();
 
-    Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(initBodyPosX, initBodyPosY));
-    Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(targetBodyPosX, targetBodyPosY));
+    trajopt::SrbdTrajopt::Params params;
 
-    ifopt::Problem nlp = create_phased_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
-    // ifopt::Problem nlp = create_implicit_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
-    // ifopt::Problem nlp = trajopt::create_pendulum_nlp();
+    params.numKnots = 10;
+    params.numSamples = 16;
 
-    std::cout << "Solving.." << std::endl;
-    ifopt::IpoptSolver ipopt;
-    ipopt.SetOption("jacobian_approximation", "exact");
-    ipopt.SetOption("max_cpu_time", 1e50);
-    ipopt.SetOption("max_iter", static_cast<int>(1000));
+    params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
+    params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + terrain.height(0.2, 0.));
 
-    // Solve.
-    auto tStart = std::chrono::high_resolution_clock::now();
+    params.initBodyRot = Eigen::Vector3d::Zero();
+    params.targetBodyRot = Eigen::Vector3d::Zero();
 
-    ipopt.Solve(nlp);
-    nlp.PrintCurrent();
-    const auto tEnd = std::chrono::high_resolution_clock::now();
+    // Add feet pos and force var sets.
+    std::vector<double> phaseTimes = {0.2, 0.1, 0.2};
+    std::vector<size_t> posKnotsPerSwing = {1};
+    std::vector<size_t> forceKnotsPerSwing = {5, 5};
 
-    auto duration = std::chrono::duration<double, std::milli>(tEnd - tStart);
-    std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
+    params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
+    params.addCost = false;
 
-#if VIZ
-    // For phased problem
-    trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, totalTime, 0.001);
-    // For implicit problem
-    // trajopt::visualise<trajopt::TrajectoryVars>(nlp, model, totalTime, 0.001);
-#endif
+    params.numSteps = {2, 2, 2, 2};
+    params.phaseTimes = {
+        {0.2, 0.1, 0.2},
+        {0.2, 0.1, 0.2},
+        {0.2, 0.1, 0.2},
+        {0.2, 0.1, 0.2}};
+    params.stepKnotsPerSwing = {
+        {1},
+        {1},
+        {1},
+        {1}};
+    params.forceKnotsPerSwing = {
+        {5, 5},
+        {5, 5},
+        {5, 5},
+        {5, 5}};
+    params.initialFootPhases = {trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance};
 
-    // Print variables.
+    auto to = trajopt::SrbdTrajopt(params, model, terrain);
+
+    to.initProblem();
+    to.solveProblem();
+
+    //     trajopt::SingleRigidBodyDynamicsModel model;
+    //     trajopt::init_model_anymal(model);
+    //     // trajopt::init_model_biped(model);
     //
-    // double dt = 0.;
-    // for (size_t i = 0; i < numSamples; ++i) {
-    //     std::cout << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(dt, 0).transpose() << std::endl;
+    //     trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
+    //     terrain.set_zero();
     //
-    //     dt += sampleTime;
-    // }
+    //     Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.height(initBodyPosX, initBodyPosY));
+    //     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.height(targetBodyPosX, targetBodyPosY));
     //
-    // std::cout << std::endl;
+    //     ifopt::Problem nlp = create_phased_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
+    //     // ifopt::Problem nlp = create_implicit_nlp(numKnots, numSamples, totalTime, initBodyPos, targetBodyPos, model, terrain);
+    //     // ifopt::Problem nlp = trajopt::create_pendulum_nlp();
+    //     //
     //
-    // for (size_t k = 0; k < 4; k++) {
+    //     std::cout << "Solving.." << std::endl;
+    //     ifopt::IpoptSolver ipopt;
+    //     ipopt.SetOption("jacobian_approximation", "exact");
+    //     ipopt.SetOption("max_cpu_time", 1e50);
+    //     ipopt.SetOption("max_iter", static_cast<int>(1000));
     //
-    //     dt = 0.;
-    //     for (size_t i = 0; i < numSamples; ++i) {
-    //         std::cout << "p_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(dt, 0).transpose() << std::endl;
+    //     // Solve.
+    //     auto tStart = std::chrono::high_resolution_clock::now();
     //
-    //         std::cout << "v_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(dt, 1).transpose() << std::endl;
+    //     ipopt.Solve(nlp);
+    //     nlp.PrintCurrent();
+    //     const auto tEnd = std::chrono::high_resolution_clock::now();
     //
-    //         dt += sampleTime;
-    //     }
+    //     auto duration = std::chrono::duration<double, std::milli>(tEnd - tStart);
+    //     std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
     //
-    //     std::cout << std::endl;
+    // #if VIZ
+    //     // For phased problem
+    //     trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, totalTime, 0.001);
+    //     // For implicit problem
+    //     // trajopt::visualise<trajopt::TrajectoryVars>(nlp, model, totalTime, 0.001);
+    // #endif
     //
-    //     dt = 0.;
-    //     for (size_t i = 0; i < numSamples; ++i) {
-    //         std::cout << "f_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(k)))->trajectoryEval(dt, 0).transpose() << std::endl;
-    //
-    //         dt += sampleTime;
-    //     }
-    //
-    //     std::cout << std::endl;
-    // }
+    // // Print variables.
+    // //
+    // // double dt = 0.;
+    // // for (size_t i = 0; i < numSamples; ++i) {
+    // //     std::cout << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::BODY_POS_TRAJECTORY))->trajectoryEval(dt, 0).transpose() << std::endl;
+    // //
+    // //     dt += sampleTime;
+    // // }
+    // //
+    // // std::cout << std::endl;
+    // //
+    // // for (size_t k = 0; k < 4; k++) {
+    // //
+    // //     dt = 0.;
+    // //     for (size_t i = 0; i < numSamples; ++i) {
+    // //         std::cout << "p_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(dt, 0).transpose() << std::endl;
+    // //
+    // //         std::cout << "v_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(k)))->trajectoryEval(dt, 1).transpose() << std::endl;
+    // //
+    // //         dt += sampleTime;
+    // //     }
+    // //
+    // //     std::cout << std::endl;
+    // //
+    // //     dt = 0.;
+    // //     for (size_t i = 0; i < numSamples; ++i) {
+    // //         std::cout << "f_" << k << ": " << std::static_pointer_cast<trajopt::TrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(k)))->trajectoryEval(dt, 0).transpose() << std::endl;
+    // //
+    // //         dt += sampleTime;
+    // //     }
+    // //
+    // //     std::cout << std::endl;
+    // // }
 
     return 0;
 }

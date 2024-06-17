@@ -49,8 +49,6 @@ void FootTerrainDistanceImplicit::FillJacobianBlock(std::string var_set, FootTer
 
             auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
 
-            Eigen::Vector3d grad = Eigen::Vector3d(-terrain_d[0], -terrain_d[1], 1.);
-
             jac_block.middleRows(i, 1) = -terrain_d[0] * dPos.middleRows(0, 1);
             jac_block.middleRows(i, 1) = -terrain_d[1] * dPos.middleRows(1, 1);
             jac_block.middleRows(i, 1) = 1. * dPos.middleRows(2, 1);
