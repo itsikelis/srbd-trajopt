@@ -1,10 +1,43 @@
+//|
+//|    Copyright (c) 2022-2023 Computational Intelligence Lab, University of Patras, Greece
+//|    Copyright (c) 2023 Laboratory of Automation and Robotics, University of Patras, Greece
+//|    Copyright (c) 2022-2023 Konstantinos Chatzilygeroudis
+//|    Authors:  Konstantinos Chatzilygeroudis
+//|    email:    costashatz@gmail.com
+//|    website:  https://nosalro.github.io/
+//|              http://cilab.math.upatras.gr/
+//|              https://lar.ece.upatras.gr/
+//|
+//|    This file is part of numopt.
+//|
+//|    All rights reserved.
+//|
+//|    Redistribution and use in source and binary forms, with or without
+//|    modification, are permitted provided that the following conditions are met:
+//|
+//|    1. Redistributions of source code must retain the above copyright notice, this
+//|       list of conditions and the following disclaimer.
+//|
+//|    2. Redistributions in binary form must reproduce the above copyright notice,
+//|       this list of conditions and the following disclaimer in the documentation
+//|       and/or other materials provided with the distribution.
+//|
+//|    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+//|    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+//|    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+//|    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+//|    FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+//|    DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+//|    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+//|    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+//|    OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+//|    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//|
 #ifndef NUMOPT_ALGO_ALM_HPP
 #define NUMOPT_ALGO_ALM_HPP
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
-
-#include <iostream>
 
 namespace numopt {
     namespace algo {
@@ -19,7 +52,7 @@ namespace numopt {
             struct Params {
                 x_t initial_x;
                 x_t initial_lambda;
-                Scalar initial_rho = 0.;
+                x_t initial_rho;
 
                 unsigned int dim = 0;
                 unsigned int dim_eq = 0;
@@ -27,7 +60,7 @@ namespace numopt {
 
                 Scalar rho_a = 10.;
                 Scalar max_rho = 10000.;
-                Scalar rho_eps = 1e-3;
+                Scalar rho_eps = 1e-6;
 
                 unsigned int newton_max_iters = 50;
                 Scalar newton_eps = 1e-3;
@@ -61,7 +94,7 @@ namespace numopt {
             {
                 assert(params.initial_x.size() == params.dim && "Initial point size and dimensions should match!");
                 assert(params.initial_lambda.size() == (params.dim_eq + params.dim_ineq) && "Initial lambda size and constraint dimensions should match!");
-                assert(params.initial_rho > 0. && "Initial rho should be bigger than zero!");
+                assert((params.initial_rho.array() > 0.).all() && "Initial rho should be bigger than zero!");
                 assert(params.rho_a > 1. && "rho update needs to be great than one!");
                 _x_k = params.initial_x;
                 _lambda_k = params.initial_lambda;
@@ -70,7 +103,7 @@ namespace numopt {
 
             const x_t x() const { return _x_k; }
             const x_t lambda() const { return _lambda_k; }
-            const Scalar rho() const { return _rho; }
+            const x_t rho() const { return _rho; }
 
             IterationLog step()
             {
@@ -89,17 +122,23 @@ namespace numopt {
 
                 // Update equality duals
                 for (unsigned int i = 0; i < dim_eq; i++) {
-                    _lambda_k[i] = _lambda_k[i] + _rho * c[i];
+                    _lambda_k[i] = _lambda_k[i] + _rho[i] * c[i];
                 }
 
                 // Update inequality duals
                 for (unsigned int i = dim_eq; i < dim_eq + dim_ineq; i++) {
-                    _lambda_k[i] = std::max(Scalar(0.), _lambda_k[i] + _rho * c[i]);
+                    _lambda_k[i] = std::max(Scalar(0.), _lambda_k[i] + _rho[i] * c[i]);
                 }
 
-                // Update rho
-                if (c.norm() > _params.rho_eps)
-                    _rho = std::min(rho_a * _rho, _params.max_rho);
+                // Update rhos
+                for (unsigned int i = 0; i < dim_eq + dim_ineq; i++) {
+                    Scalar cv = std::abs(c[i]);
+                    if (cv > _params.rho_eps && (_log.iterations == 0 || std::abs(_log.c[i]) < cv))
+                        _rho[i] = std::min(rho_a * _rho[i], _params.max_rho);
+                    else if (cv <= _params.rho_eps) {
+                        _rho[i] = std::max(_rho[i] / rho_a, 0.5 * std::sqrt(std::abs(_lambda_k[i]) / _params.rho_eps));
+                    }
+                }
 
                 _log.iterations++;
                 _log.c = c;
@@ -119,7 +158,7 @@ namespace numopt {
             x_t _lambda_k;
 
             // Current rho
-            Scalar _rho;
+            x_t _rho;
 
             // Fitness structure
             Fit _fit;
@@ -171,7 +210,7 @@ namespace numopt {
 
                 x_t x_k = x;
                 x_t l_k = l;
-                Scalar r_k = _rho;
+                x_t r_k = _rho;
 
                 unsigned int iter = 0;
                 while (delta.norm() > newton_eps) {
@@ -222,36 +261,30 @@ namespace numopt {
             x_t _cg_solve(const mat_t& A, const x_t& b, const x_t& x0) const
             {
                 x_t x_k = x0;
-                x_t residual = b - A * x0;
-                Scalar rtr = residual.transpose() * residual;
+                x_t g_k = b - A * x0;
+                x_t g_k_1 = g_k;
+                x_t d_k, d_k_1;
 
-                unsigned int iter = 0;
-                x_t p = residual;
-                while (residual.norm() > _params.cg_solve_eps) {
-                    x_t Ap = A * p;
-                    Scalar a = rtr / (p.transpose() * Ap);
-
-                    if (a != a) // something bad happened
+                for (unsigned int iter = 0; iter < _params.cg_solve_max_iters; iter++) {
+                    if (g_k.norm() < _params.cg_solve_eps)
                         break;
-
-                    x_k = x_k + a * p;
-
-                    iter++;
-                    if (iter >= _params.cg_solve_max_iters || a <= _params.cg_solve_eps)
-                        break;
-
-                    x_t rnew = residual - a * Ap;
-                    Scalar rtr_new = rnew.transpose() * rnew;
-                    p = rnew + (rtr_new / rtr) * p;
-
-                    rtr = rtr_new;
-                    residual = rnew;
+                    if (iter >= 1) {
+                        d_k_1 = d_k;
+                        Scalar beta_k = -(g_k.transpose() * g_k)[0] / (g_k_1.transpose() * g_k_1)[0];
+                        d_k = g_k - beta_k * d_k_1;
+                    }
+                    else
+                        d_k = g_k;
+                    g_k_1 = g_k;
+                    Scalar a_k = (g_k.transpose() * g_k)[0] / (d_k.transpose() * A * d_k)[0];
+                    x_k = x_k + a_k * d_k;
+                    g_k = g_k - a_k * A * d_k;
                 }
 
                 return x_k;
             }
 
-            std::pair<x_t, x_t> _newton_solve(const x_t& x, const x_t& l, const Scalar& rho)
+            std::pair<x_t, x_t> _newton_solve(const x_t& x, const x_t& l, const x_t& rho)
             {
                 const auto dim_eq = _params.dim_eq;
                 const auto dim_ineq = _params.dim_ineq;
@@ -261,7 +294,7 @@ namespace numopt {
 
                 x_t x_k = x;
                 x_t l_k = l;
-                Scalar r_k = rho;
+                x_t r_k = rho;
 
                 x_t c;
                 mat_t C;
@@ -276,7 +309,7 @@ namespace numopt {
                             c[i] = 0.;
                         }
                     }
-                    residual = _grad_eval(x_k) + (l_k + r_k * c).transpose() * C;
+                    residual = _grad_eval(x_k) + x_t(l_k.array() + r_k.array() * c.array()).transpose() * C;
                 };
 
                 compute_residual();
@@ -285,7 +318,12 @@ namespace numopt {
                 unsigned int iter = 0;
                 while (residual.norm() > _params.newton_eps && prev_grad.norm() > _params.newton_eps) {
                     // Compute Hessian (Gauss-Newton, we skip the second derivatives of the constraints)
-                    mat_t H = _hessian_eval(x_k) + r_k * C.transpose() * C;
+                    // TO-DO: We are doing too many copies here!
+                    mat_t CC = C;
+                    for (unsigned int i = 0; i < C.rows(); i++) {
+                        CC.row(i) *= r_k[i];
+                    }
+                    mat_t H = _hessian_eval(x_k) + CC.transpose() * C;
 
                     // Compute Δx
                     // TO-DO: Add scaling/pre-conditioner/regularization?
@@ -308,15 +346,14 @@ namespace numopt {
                     compute_residual();
 
                     iter++;
-                    if (iter >= _params.newton_max_iters || delta_x.norm() <= _params.newton_eps) {
+                    if (iter >= _params.newton_max_iters || delta_x.norm() <= _params.newton_eps)
                         break;
-                    }
                 }
 
                 return {x_k, c};
             }
 
-            Scalar _al(const x_t& x, const x_t& l, const Scalar& rho)
+            Scalar _al(const x_t& x, const x_t& l, const x_t& rho)
             {
                 const auto dim_eq = _params.dim_eq;
                 const auto dim_ineq = _params.dim_ineq;
@@ -328,10 +365,16 @@ namespace numopt {
                     }
                 }
 
-                return _eval(x) + l.transpose() * c + rho / 2. * c.transpose() * c;
+                Scalar pen = static_cast<Scalar>(0.);
+                for (unsigned int i = 0; i < dim_eq + dim_ineq; i++) {
+                    pen += rho[i] / 2. * c[i] * c[i];
+                }
+
+                // return _eval(x) + l.transpose() * c + rho / 2. * c.transpose() * c;
+                return _eval(x) + l.transpose() * c + pen;
             }
 
-            g_t _dal(const x_t& x, const x_t& l, const Scalar& rho, bool full = false)
+            g_t _dal(const x_t& x, const x_t& l, const x_t& rho, bool full = false)
             {
                 const auto dim = _params.dim;
                 const auto dim_eq = _params.dim_eq;
@@ -346,12 +389,12 @@ namespace numopt {
 
                 if (full) {
                     g_t dal(dim + dim_eq + dim_ineq);
-                    dal << _grad_eval(x) + (l + rho * c).transpose() * _cjac_eval(x), c.transpose();
+                    dal << _grad_eval(x) + x_t(l.array() + rho.array() * c.array()).transpose() * _cjac_eval(x), c.transpose();
                     return dal;
                 }
 
                 // else
-                g_t dal = _grad_eval(x) + (l + rho * c).transpose() * _cjac_eval(x);
+                g_t dal = _grad_eval(x) + x_t(l.array() + rho.array() * c.array()).transpose() * _cjac_eval(x);
 
                 return dal;
             }

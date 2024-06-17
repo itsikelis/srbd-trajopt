@@ -77,8 +77,8 @@ int main()
     }
 
     params.initial_lambda = algo_t::x_t::Zero(fit.dim_eq() + fit.dim_ineq());
-    params.max_rho = 1e10;
-    params.initial_rho = 1e6;
+    params.max_rho = 1e20;
+    params.initial_rho = algo_t::x_t::Ones(fit.dim_eq() + fit.dim_ineq()) * 100.;
     params.rho_a = 10.;
 
     algo_t algo(params, fit);
@@ -95,12 +95,14 @@ int main()
     // Solve.
     auto tStart = std::chrono::high_resolution_clock::now();
 
-    unsigned int iters = 1200;
+    unsigned int iters = 2000;
     for (unsigned int i = 0; i < iters; ++i) {
         auto log = algo.step();
         // std::cout << algo.x().transpose() << " -> " << fit.f(algo.x()) << std::endl;
-        std::cout << "f: " << log.f << std::endl;
-        std::cout << "c: " << log.c.norm() << std::endl;
+        std::cout << "#" << (i + 1) << std::endl;
+        // std::cout << "  ρ: " << algo.rho() << std::endl;
+        std::cout << "  f: " << log.f << std::endl;
+        std::cout << "  c: " << log.c.norm() << std::endl;
         // std::cout << " " << log.func_evals << " " << log.cons_evals << " " << log.grad_evals << " " << log.hessian_evals << " " << log.cjac_evals << std::endl;
     }
 

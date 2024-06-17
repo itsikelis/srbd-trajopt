@@ -115,7 +115,7 @@ int main()
     //     params.initial_x.segment(fit_t::T * fit_t::Ad + i * fit_t::D, fit_t::D) = fit.x0 + (fit.xN - fit.x0) * (i + 1) / static_cast<double>(fit_t::T);
     // }
     params.initial_lambda = algo_t::x_t::Zero(fit.dim_eq() + fit.dim_ineq());
-    params.initial_rho = 100.;
+    params.initial_rho = algo_t::x_t::Ones(fit.dim_eq() + fit.dim_ineq()) * 100.;
     params.rho_a = 10.;
 
     algo_t algo(params, fit);
