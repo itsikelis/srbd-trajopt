@@ -17,10 +17,10 @@ namespace trajopt {
         TerrainGrid(size_t rows,
             size_t cols,
             double mu,
-            size_t min_x,
-            size_t min_y,
-            size_t max_x,
-            size_t max_y) : _rows(rows),
+            double min_x,
+            double min_y,
+            double max_x,
+            double max_y) : _rows(rows),
                             _cols(cols),
                             _mu(mu),
                             _min_x(min_x),
@@ -260,7 +260,7 @@ namespace trajopt {
     protected:
         size_t _rows, _cols;
         double _mu;
-        int _min_x, _min_y, _max_x, _max_y;
+        double _min_x, _min_y, _max_x, _max_y;
         Grid _grid;
     };
 } // namespace trajopt

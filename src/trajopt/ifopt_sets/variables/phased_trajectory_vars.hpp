@@ -16,8 +16,6 @@ namespace trajopt {
         PhasedTrajectoryVars(const std::string& name, const Eigen::VectorXd& initVals, const VecBound& bounds, const Eigen::VectorXd& phaseTimes, const std::vector<size_t>& knotsPerSwing, rspl::Phase initPhase)
             : VariableSet(kSpecifyLater, name), _values(initVals), _bounds(bounds), _phaseTimes(phaseTimes), _knotsPerSwing(knotsPerSwing), _initPhase(initPhase)
         {
-            // SetVariables(Eigen::VectorXd::Random(GetRows())); // initialize to random
-            // SetVariables(Eigen::VectorXd::Zero(GetRows())); // initialize to zero
             SetVariables(initVals);
             SetRows(_traj.num_vars());
         }
