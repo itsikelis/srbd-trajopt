@@ -34,7 +34,7 @@ namespace trajopt {
         }
 
         // Add body pos and rot var sets.
-        ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
+        ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, Eigen::Vector3d::Zero(), targetBodyPos, Eigen::Vector3d::Zero(), ifopt::NoBound, 6 * numKnots);
         Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
         auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
@@ -42,7 +42,7 @@ namespace trajopt {
 
         Eigen::Vector3d initRotPos = Eigen::Vector3d::Zero();
         Eigen::Vector3d targetRotPos = Eigen::Vector3d::Zero();
-        ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
+        ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, Eigen::Vector3d::Zero(), targetRotPos, Eigen::Vector3d::Zero(), ifopt::NoBound, 6 * numKnots);
         Eigen::VectorXd initBodyRotVals = Eigen::VectorXd::Zero(3 * 2 * numKnots);
 
         auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);

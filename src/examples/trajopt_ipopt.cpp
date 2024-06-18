@@ -67,8 +67,9 @@ int main()
 
     auto to = trajopt::SrbdTrajopt(params, model, terrain);
 
-    to.initProblem();
-    to.solveProblem();
+    ifopt::Problem nlp;
+    to.initProblem(nlp);
+    to.solveProblem(nlp);
 
     //     trajopt::SingleRigidBodyDynamicsModel model;
     //     trajopt::init_model_anymal(model);

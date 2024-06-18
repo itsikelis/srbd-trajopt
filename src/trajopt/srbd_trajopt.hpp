@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <ctime>
 #include <iostream>
 
@@ -49,6 +48,12 @@ namespace trajopt {
             Vec3 initBodyRot{Vec3::Zero()};
             Vec3 targetBodyRot{Vec3::Zero()};
 
+            Vec3 initBodyVel{Vec3::Zero()};
+            Vec3 targetBodyVel{Vec3::Zero()};
+
+            Vec3 initBodyRotVel{Vec3::Zero()};
+            Vec3 targetBodyRotVel{Vec3::Zero()};
+
             size_t numKnots;
             size_t numSamples;
 
@@ -79,6 +84,11 @@ namespace trajopt {
                 {5, 5}};
 
             std::vector<rspl::Phase> initialFootPhases{rspl::Phase::Stance, rspl::Phase::Stance, rspl::Phase::Stance, rspl::Phase::Stance};
+
+            // IPOPT Parameters
+            std::string jacobianApproximation = "exact";
+            double maxCpuTime = 1e50;
+            size_t maxIters = 1000;
         };
 
     public:
@@ -91,7 +101,7 @@ namespace trajopt {
 
         ~SrbdTrajopt() {}
 
-        void initProblem()
+        void initProblem(ifopt::Problem& nlp)
         {
             // Add body pos and rot var sets.
             std::vector<double> polyTimes = std::vector<double>(_params.numKnots - 1);
@@ -101,16 +111,16 @@ namespace trajopt {
 
             double sampleTime = _totalTime / static_cast<double>(_params.numSamples - 1.);
 
-            ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(_params.initBodyPos, _params.targetBodyPos, ifopt::NoBound, 6 * _params.numKnots);
+            ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(_params.initBodyPos, _params.initBodyVel, _params.targetBodyPos, _params.targetBodyVel, ifopt::NoBound, 6 * _params.numKnots);
             Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * _params.numKnots);
 
             auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
-            _nlp.AddVariableSet(posVars);
+            nlp.AddVariableSet(posVars);
 
-            ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(_params.initBodyRot, _params.targetBodyRot, ifopt::NoBound, 6 * _params.numKnots);
+            ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(_params.initBodyRot, _params.initBodyRotVel, _params.targetBodyRot, _params.targetBodyRotVel, ifopt::NoBound, 6 * _params.numKnots);
             Eigen::VectorXd initBodyRotVals = Eigen::VectorXd::Zero(3 * 2 * _params.numKnots);
             auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
-            _nlp.AddVariableSet(rotVars);
+            nlp.AddVariableSet(rotVars);
 
             // Initialise feet var sets.
             for (size_t i = 0; i < _model.numFeet; ++i) {
@@ -123,53 +133,44 @@ namespace trajopt {
                 ifopt::Component::VecBound footPosBounds(3 * _params.numSteps[i] + 6 * std::accumulate(_params.stepKnotsPerSwing[i].begin(), _params.stepKnotsPerSwing[i].end(), 0), ifopt::NoBound);
                 ifopt::Component::VecBound footForceBounds(3 * numForceSteps + 6 * std::accumulate(_params.forceKnotsPerSwing[i].begin(), _params.forceKnotsPerSwing[i].end(), 0), ifopt::Bounds(-_params.maxForce, _params.maxForce));
 
-                _nlp.AddVariableSet(std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, footPosBounds, _params.phaseTimes[i], _params.stepKnotsPerSwing[i], _params.initialFootPhases[i]));
-                _nlp.AddVariableSet(std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, _params.phaseTimes[i], _params.forceKnotsPerSwing[i], initForcePhase));
+                nlp.AddVariableSet(std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, footPosBounds, _params.phaseTimes[i], _params.stepKnotsPerSwing[i], _params.initialFootPhases[i]));
+                nlp.AddVariableSet(std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_FORCE + "_" + std::to_string(i), initFootForceVals, footForceBounds, _params.phaseTimes[i], _params.forceKnotsPerSwing[i], initForcePhase));
             }
 
             // Add constraints
-            _nlp.AddConstraintSet(std::make_shared<trajopt::Dynamics<trajopt::PhasedTrajectoryVars>>(_model, _params.numSamples, sampleTime));
-            _nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
-            _nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
+            nlp.AddConstraintSet(std::make_shared<trajopt::Dynamics<trajopt::PhasedTrajectoryVars>>(_model, _params.numSamples, sampleTime));
+            nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(posVars));
+            nlp.AddConstraintSet(std::make_shared<trajopt::AccelerationConstraints>(rotVars));
 
             for (size_t i = 0; i < _model.numFeet; ++i) {
-                auto footPosVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(_nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(i)));
-                auto footForceVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(_nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(i)));
+                auto footPosVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_POS + "_" + std::to_string(i)));
+                auto footForceVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(i)));
 
-                _nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
-                _nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, _terrain, _params.numSteps[i], 1, _params.stepKnotsPerSwing[i]));
-                _nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(_model, posVars, rotVars, footPosVars, _params.numSamples, sampleTime));
-                _nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, _terrain, _params.numSamples, sampleTime));
+                nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
+                nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, _terrain, _params.numSteps[i], 1, _params.stepKnotsPerSwing[i]));
+                nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(_model, posVars, rotVars, footPosVars, _params.numSamples, sampleTime));
+                nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, _terrain, _params.numSamples, sampleTime));
                 if (_params.addCost)
-                    _nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::PhasedTrajectoryVars>>(footPosVars, _params.numKnots));
+                    nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::PhasedTrajectoryVars>>(footPosVars, _params.numKnots));
             }
         }
 
-        void
-        solveProblem()
+        void solveProblem(ifopt::Problem& nlp)
         {
             ifopt::IpoptSolver ipopt;
-            // TODO add these options in solver options.
-            ipopt.SetOption("jacobian_approximation", "exact");
-            ipopt.SetOption("max_cpu_time", 1e50);
-            ipopt.SetOption("max_iter", static_cast<int>(1000));
+            ipopt.SetOption("jacobian_approximation", _params.jacobianApproximation);
+            ipopt.SetOption("max_cpu_time", _params.maxCpuTime);
+            ipopt.SetOption("max_iter", static_cast<int>(_params.maxIters));
 
-            auto tStart = std::chrono::high_resolution_clock::now();
+            ipopt.Solve(nlp);
 
-            ipopt.Solve(_nlp);
-            _nlp.PrintCurrent();
-
-            const auto tEnd = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration<double, std::milli>(tEnd - tStart);
-            std::cout << "Wall clock time: " << duration.count() / 1000 << " seconds." << std::endl;
+            std::cout << "Ipopt Wall Time: " << ipopt.GetTotalWallclockTime() << " seconds." << std::endl;
         }
 
     protected:
         Params _params;
         Model _model;
         Terrain _terrain;
-
-        ifopt::Problem _nlp;
 
         double _totalTime;
     };

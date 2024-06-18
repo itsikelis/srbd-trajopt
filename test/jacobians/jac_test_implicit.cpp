@@ -71,7 +71,7 @@ int main()
     // Add body pos and rot var sets.
     Vector3d initBodyPos = Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
     Vector3d targetBodyPos = Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, targetBodyPos, ifopt::NoBound, 6 * numKnots);
+    ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, Vector3d::Zero(), targetBodyPos, Vector3d::Zero(), ifopt::NoBound, 6 * numKnots);
     auto initBodyPosVals = random_uniform_vector(3 * 2 * numKnots, -1., 1.);
 
     auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
@@ -79,7 +79,7 @@ int main()
 
     Vector3d initRotPos = Vector3d::Zero();
     Vector3d targetRotPos = Vector3d::Zero();
-    ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, targetRotPos, ifopt::NoBound, 6 * numKnots);
+    ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(initRotPos, Vector3d::Zero(), targetRotPos, Vector3d::Zero(), ifopt::NoBound, 6 * numKnots);
     auto initBodyRotVals = random_uniform_vector(3 * 2 * numKnots, -1., 1.);
 
     auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
