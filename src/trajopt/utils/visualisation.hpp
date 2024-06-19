@@ -14,7 +14,7 @@
 
 namespace trajopt {
     template <class FootTrajectoryVars>
-    inline void visualise(ifopt::Problem nlp, const SingleRigidBodyDynamicsModel& model, double totalTime, double dt, const std::string vidName = "")
+    inline void visualise(const ifopt::Problem& nlp, const SingleRigidBodyDynamicsModel& model, double totalTime, double dt, const std::string vidName = "")
     {
         robot_dart::RobotDARTSimu simu(dt);
         auto graphics = std::make_shared<robot_dart::gui::magnum::Graphics>();

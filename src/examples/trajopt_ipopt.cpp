@@ -20,6 +20,8 @@
 
 #include <trajopt/utils/gait_profiler.hpp>
 
+#include <trajopt/utils/visualisation.hpp>
+
 int main()
 {
     std::srand(std::time(0));
@@ -42,9 +44,9 @@ int main()
     params.targetBodyRot = Eigen::Vector3d::Zero();
 
     params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
-    params.addCost = true;
+    params.addCost = false;
 
-    params.numSteps = {2, 2, 2, 2};
+    params.numSteps = {2, 2, 2, 3};
     params.initialFootPhases = {trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance};
 
     params.phaseTimes.resize(model.numFeet);
@@ -81,7 +83,7 @@ int main()
     //     {1},
     //     {1},
     //     {1},
-    //     {1}};
+    //     {1}
     // params.forceKnotsPerSwing = {
     //     {5, 5},
     //     {5, 5},
@@ -93,6 +95,9 @@ int main()
     ifopt::Problem nlp;
     to.initProblem(nlp);
     to.solveProblem(nlp);
+
+    double totalTime = std::accumulate(params.phaseTimes[3].begin(), params.phaseTimes[0].end(), 0.);
+    trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, 2 * totalTime, 0.001);
 
     //     trajopt::SingleRigidBodyDynamicsModel model;
     //     trajopt::init_model_anymal(model);

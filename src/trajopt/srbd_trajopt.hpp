@@ -65,23 +65,11 @@ namespace trajopt {
 
             std::vector<size_t> numSteps = {2, 2, 2, 2};
 
-            std::vector<std::vector<double>> phaseTimes = {
-                {0.2, 0.1, 0.2},
-                {0.2, 0.1, 0.2},
-                {0.2, 0.1, 0.2},
-                {0.2, 0.1, 0.2}};
+            std::vector<std::vector<double>> phaseTimes;
 
-            std::vector<std::vector<size_t>> stepKnotsPerSwing = {
-                {1},
-                {1},
-                {1},
-                {1}};
+            std::vector<std::vector<size_t>> stepKnotsPerSwing;
 
-            std::vector<std::vector<size_t>> forceKnotsPerSwing = {
-                {5, 5},
-                {5, 5},
-                {5, 5},
-                {5, 5}};
+            std::vector<std::vector<size_t>> forceKnotsPerSwing;
 
             std::vector<rspl::Phase> initialFootPhases{rspl::Phase::Stance, rspl::Phase::Stance, rspl::Phase::Stance, rspl::Phase::Stance};
 
@@ -131,6 +119,21 @@ namespace trajopt {
                 Eigen::VectorXd initFootForceVals = Eigen::VectorXd::Zero(3 * numForceSteps + 6 * std::accumulate(_params.forceKnotsPerSwing[i].begin(), _params.forceKnotsPerSwing[i].end(), 0));
 
                 ifopt::Component::VecBound footPosBounds(3 * _params.numSteps[i] + 6 * std::accumulate(_params.stepKnotsPerSwing[i].begin(), _params.stepKnotsPerSwing[i].end(), 0), ifopt::NoBound);
+                size_t numPhases = _params.numSteps[i] + _params.stepKnotsPerSwing[i].size();
+                size_t idx = 0;
+                bool isStance = (_params.initialFootPhases[i] == rspl::Phase::Stance) ? true : false;
+                for (size_t k = 0; k < numPhases; ++k) {
+                    if (isStance)
+                        idx += 3;
+                    else {
+                        footPosBounds[idx + 3] = ifopt::Bounds(-1., 1.);
+                        footPosBounds[idx + 4] = ifopt::Bounds(-1., 1.);
+                        footPosBounds[idx + 5] = ifopt::Bounds(-1., 1.);
+                        idx += 6;
+                    }
+                    isStance = !isStance;
+                }
+
                 ifopt::Component::VecBound footForceBounds(3 * numForceSteps + 6 * std::accumulate(_params.forceKnotsPerSwing[i].begin(), _params.forceKnotsPerSwing[i].end(), 0), ifopt::Bounds(-_params.maxForce, _params.maxForce));
 
                 nlp.AddVariableSet(std::make_shared<trajopt::PhasedTrajectoryVars>(trajopt::FOOT_POS + "_" + std::to_string(i), initFootPosVals, footPosBounds, _params.phaseTimes[i], _params.stepKnotsPerSwing[i], _params.initialFootPhases[i]));
@@ -147,7 +150,7 @@ namespace trajopt {
                 auto footForceVars = std::static_pointer_cast<trajopt::PhasedTrajectoryVars>(nlp.GetOptVariables()->GetComponent(trajopt::FOOT_FORCE + "_" + std::to_string(i)));
 
                 nlp.AddConstraintSet(std::make_shared<trajopt::PhasedAccelerationConstraints>(footPosVars));
-                nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, _terrain, _params.numSteps[i], 1, _params.stepKnotsPerSwing[i]));
+                nlp.AddConstraintSet(std::make_shared<trajopt::FootTerrainDistancePhased>(footPosVars, _terrain, _params.numSteps[i], _params.stepKnotsPerSwing[i].size(), _params.stepKnotsPerSwing[i]));
                 nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(_model, posVars, rotVars, footPosVars, _params.numSamples, sampleTime));
                 nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, _terrain, _params.numSamples, sampleTime));
                 if (_params.addCost)
