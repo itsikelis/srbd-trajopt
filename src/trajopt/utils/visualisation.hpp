@@ -12,11 +12,13 @@
 #if VIZ
 #include <robot_dart/gui/magnum/graphics.hpp>
 #include <robot_dart/robot_dart_simu.hpp>
+#endif
 
 namespace trajopt {
     template <class FootTrajectoryVars>
     inline void visualise(const ifopt::Problem& nlp, const SingleRigidBodyDynamicsModel& model, double totalTime, double dt, const std::string vidName = "")
     {
+#if VIZ
         robot_dart::RobotDARTSimu simu(dt);
         auto graphics = std::make_shared<robot_dart::gui::magnum::Graphics>();
         simu.set_graphics(graphics);
@@ -65,7 +67,7 @@ namespace trajopt {
             t += dt;
         }
         simu.run(1.);
+#endif
     }
 
 } // namespace trajopt
-#endif

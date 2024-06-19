@@ -74,7 +74,7 @@ namespace trajopt {
 
             // IPOPT Parameters
             std::string jacobianApproximation = "exact";
-            double maxWallTime = 2;
+            double maxWallTime = 2.;
             size_t maxIters = 1000;
         };
 
@@ -100,12 +100,19 @@ namespace trajopt {
 
             ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(_params.initBodyPos, _params.initBodyVel, _params.targetBodyPos, _params.targetBodyVel, ifopt::NoBound, 6 * _params.numKnots);
             Eigen::VectorXd initBodyPosVals = Eigen::VectorXd::Zero(3 * 2 * _params.numKnots);
+            initBodyPosVals.head(6) << _params.initBodyPos, _params.initBodyVel;
+            initBodyPosVals.tail(6) << _params.targetBodyPos, _params.targetBodyVel;
+            for (size_t i = 1; i < _params.numKnots - 1; ++i) {
+                double p = i / static_cast<double>(_params.numKnots - 1);
+                initBodyPosVals.segment(i * 6, 3) = (1 - p) * _params.initBodyPos + p * _params.targetBodyPos;
+            }
 
             auto posVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_POS_TRAJECTORY, initBodyPosVals, polyTimes, bodyPosBounds);
             nlp.AddVariableSet(posVars);
 
             ifopt::Component::VecBound bodyRotBounds = trajopt::fillBoundVector(_params.initBodyRot, _params.initBodyRotVel, _params.targetBodyRot, _params.targetBodyRotVel, ifopt::NoBound, 6 * _params.numKnots);
             Eigen::VectorXd initBodyRotVals = Eigen::VectorXd::Zero(3 * 2 * _params.numKnots);
+
             auto rotVars = std::make_shared<trajopt::TrajectoryVars>(trajopt::BODY_ROT_TRAJECTORY, initBodyRotVals, polyTimes, bodyRotBounds);
             nlp.AddVariableSet(rotVars);
 
