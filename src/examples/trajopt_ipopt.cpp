@@ -37,16 +37,16 @@ int main()
     params.numSamples = 24;
 
     params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + terrain.height(1.5, 0.));
-    std::cout << "Target: " << params.targetBodyPos << std::endl;
+    params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + terrain.height(0.2, 0.));
 
     params.initBodyRot = Eigen::Vector3d::Zero();
-    params.targetBodyRot = Eigen::Vector3d::Zero();
+    params.targetBodyRot = Eigen::Vector3d(M_PI / 3, 0., 0.);
+
+    params.numSteps = {2, 2, 2, 2};
 
     params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
     params.addCost = false;
 
-    params.numSteps = {4, 4, 5, 4};
     params.initialFootPhases = {trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance};
 
     params.phaseTimes.resize(model.numFeet);
@@ -64,8 +64,12 @@ int main()
     to.initProblem(nlp);
     to.solveProblem(nlp);
 
+    nlp.PrintCurrent();
+
+#if VIZ
     double totalTime = std::accumulate(params.phaseTimes[3].begin(), params.phaseTimes[0].end(), 0.);
     trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, 2 * totalTime, 0.001);
+#endif
 
     return 0;
 }
