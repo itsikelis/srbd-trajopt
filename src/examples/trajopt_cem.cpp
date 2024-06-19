@@ -61,7 +61,7 @@ public:
         to.initProblem(nlp);
         to.solveProblem(nlp);
 
-        double cost = x.sum() + GetNumViolations(nlp, 1e-4);
+        double cost = x.sum() + GetNumViolations(nlp);
 
         return -cost;
     }
