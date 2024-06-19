@@ -33,3 +33,11 @@ target_link_libraries(${PROJECT_NAME}_ipopt PRIVATE  ${PROJECT_NAME})
 add_executable(${PROJECT_NAME}_alm examples/trajopt_alm.cpp)
 target_include_directories(${PROJECT_NAME}_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${PROJECT_NAME}_alm PRIVATE ${PROJECT_NAME})
+
+# Add CEM example
+add_executable(${PROJECT_NAME}_cem examples/trajopt_cem.cpp)
+target_include_directories(${PROJECT_NAME}_cem PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(${PROJECT_NAME}_cem PRIVATE
+    ${PROJECT_NAME}
+)
+target_include_directories(${PROJECT_NAME}_cem PUBLIC /usr/local/include)

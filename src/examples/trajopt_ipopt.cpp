@@ -18,6 +18,8 @@
 
 #include <trajopt/robo_spline/types.hpp>
 
+#include <trajopt/utils/gait_profiler.hpp>
+
 int main()
 {
     std::srand(std::time(0));
@@ -39,31 +41,52 @@ int main()
     params.initBodyRot = Eigen::Vector3d::Zero();
     params.targetBodyRot = Eigen::Vector3d::Zero();
 
-    // Add feet pos and force var sets.
-    std::vector<double> phaseTimes = {0.2, 0.1, 0.2};
-    std::vector<size_t> posKnotsPerSwing = {1};
-    std::vector<size_t> forceKnotsPerSwing = {5, 5};
-
     params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
-    params.addCost = false;
+    params.addCost = true;
 
     params.numSteps = {2, 2, 2, 2};
-    params.phaseTimes = {
-        {0.2, 0.1, 0.2},
-        {0.2, 0.1, 0.2},
-        {0.2, 0.1, 0.2},
-        {0.2, 0.1, 0.2}};
-    params.stepKnotsPerSwing = {
-        {1},
-        {1},
-        {1},
-        {1}};
-    params.forceKnotsPerSwing = {
-        {5, 5},
-        {5, 5},
-        {5, 5},
-        {5, 5}};
     params.initialFootPhases = {trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance};
+
+    params.phaseTimes.resize(model.numFeet);
+    params.stepKnotsPerSwing.resize(model.numFeet);
+    params.forceKnotsPerSwing.resize(model.numFeet);
+
+    for (size_t i = 0; i < model.numFeet; ++i) {
+        std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.1, 1, 5, params.initialFootPhases[i]);
+
+        // for (auto& item : params.phaseTimes[i]) {
+        //     std::cout << item << ", ";
+        // }
+        // std::cout << std::endl;
+        //
+        // for (auto& item : params.stepKnotsPerSwing[i]) {
+        //     std::cout << item << ", ";
+        // }
+        //
+        // std::cout << std::endl;
+        // for (auto& item : params.forceKnotsPerSwing[i]) {
+        //     std::cout << item << ", ";
+        // }
+        // std::cout << std::endl;
+    }
+
+    trajopt::fixDurations(params.phaseTimes);
+
+    // params.phaseTimes = {
+    //     {0.2, 0.1, 0.2},
+    //     {0.2, 0.1, 0.2},
+    //     {0.2, 0.1, 0.2},
+    //     {0.2, 0.1, 0.2}};
+    // params.stepKnotsPerSwing = {
+    //     {1},
+    //     {1},
+    //     {1},
+    //     {1}};
+    // params.forceKnotsPerSwing = {
+    //     {5, 5},
+    //     {5, 5},
+    //     {5, 5},
+    //     {5, 5}};
 
     auto to = trajopt::SrbdTrajopt(params, model, terrain);
 

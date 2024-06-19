@@ -151,7 +151,7 @@ namespace trajopt {
                 nlp.AddConstraintSet(std::make_shared<trajopt::FootBodyDistancePhased>(_model, posVars, rotVars, footPosVars, _params.numSamples, sampleTime));
                 nlp.AddConstraintSet(std::make_shared<trajopt::FrictionCone<trajopt::PhasedTrajectoryVars>>(footForceVars, footPosVars, _terrain, _params.numSamples, sampleTime));
                 if (_params.addCost)
-                    nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::PhasedTrajectoryVars>>(footPosVars, _params.numKnots));
+                    nlp.AddCostSet(std::make_shared<trajopt::MinEffort<trajopt::PhasedTrajectoryVars>>(footForceVars, footForceVars->numKnotPoints()));
             }
         }
 
