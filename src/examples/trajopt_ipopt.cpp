@@ -12,7 +12,6 @@
 #include <trajopt/utils/test_problems/create_pendulum_nlp.hpp>
 #include <trajopt/utils/test_problems/create_phased_nlp.hpp>
 #include <trajopt/utils/utils.hpp>
-#include <trajopt/utils/visualisation.hpp>
 
 #include <trajopt/srbd_trajopt.hpp>
 
@@ -64,8 +63,10 @@ int main()
     to.initProblem(nlp);
     to.solveProblem(nlp);
 
+#if VIZ
     double totalTime = std::accumulate(params.phaseTimes[3].begin(), params.phaseTimes[0].end(), 0.);
     trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, 2 * totalTime, 0.001);
+#endif
 
     return 0;
 }

@@ -2,15 +2,16 @@
 
 #include <string>
 
-#include <robot_dart/gui/magnum/graphics.hpp>
-#include <robot_dart/robot_dart_simu.hpp>
-
 #include <ifopt/problem.h>
 
 #include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
 #include <trajopt/srbd/srbd.hpp>
 
 #include <trajopt/utils/types.hpp>
+
+#if VIZ
+#include <robot_dart/gui/magnum/graphics.hpp>
+#include <robot_dart/robot_dart_simu.hpp>
 
 namespace trajopt {
     template <class FootTrajectoryVars>
@@ -67,3 +68,4 @@ namespace trajopt {
     }
 
 } // namespace trajopt
+#endif
