@@ -53,7 +53,7 @@ add_executable(${PROJECT_NAME}_cem_towr examples/trajopt_cem_towr.cpp)
 target_include_directories(${PROJECT_NAME}_cem_towr PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${PROJECT_NAME}_cem_towr PRIVATE
     ${PROJECT_NAME}
-    TBB:tbb
+    TBB::tbb
     towr::towr
 )
 target_include_directories(${PROJECT_NAME}_cem_towr PUBLIC /usr/local/include)
