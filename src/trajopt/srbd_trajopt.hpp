@@ -74,7 +74,7 @@ namespace trajopt {
 
             // IPOPT Parameters
             std::string jacobianApproximation = "exact";
-            double maxWallTime = 2.;
+            double maxCpuTime = 2.;
             size_t maxIters = 1000;
         };
 
@@ -168,7 +168,7 @@ namespace trajopt {
         {
             ifopt::IpoptSolver ipopt;
             ipopt.SetOption("jacobian_approximation", _params.jacobianApproximation);
-            ipopt.SetOption("max_wall_time", _params.maxWallTime);
+            ipopt.SetOption("max_cpu_time", _params.maxCpuTime);
             ipopt.SetOption("max_iter", static_cast<int>(_params.maxIters));
             ipopt.SetOption("print_level", 0);
 

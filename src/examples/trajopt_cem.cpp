@@ -33,8 +33,11 @@ public:
         params.numKnots = 10;
         params.numSamples = 16;
 
+        size_t posKnotsInSwingPhase = 1;
+        size_t forceKnotsInStancePhase = 5;
+
         params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.height(0., 0.));
-        params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + _terrain.height(0.2, 0.));
+        params.targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.height(0.2, 0.));
 
         params.initBodyRot = Eigen::Vector3d::Zero();
         params.targetBodyRot = Eigen::Vector3d::Zero();
@@ -50,7 +53,7 @@ public:
         params.forceKnotsPerSwing.resize(_model.numFeet);
 
         for (size_t i = 0; i < _model.numFeet; ++i) {
-            std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.1, 1, 5, params.initialFootPhases[i]);
+            std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.1, posKnotsInSwingPhase, forceKnotsInStancePhase, params.initialFootPhases[i]);
         }
 
         trajopt::fixDurations(params.phaseTimes);
