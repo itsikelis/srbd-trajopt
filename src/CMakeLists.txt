@@ -34,10 +34,27 @@ add_executable(${PROJECT_NAME}_alm examples/trajopt_alm.cpp)
 target_include_directories(${PROJECT_NAME}_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${PROJECT_NAME}_alm PRIVATE ${PROJECT_NAME})
 
+find_package(TBB REQUIRED)
+
 # Add CEM example
 add_executable(${PROJECT_NAME}_cem examples/trajopt_cem.cpp)
 target_include_directories(${PROJECT_NAME}_cem PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${PROJECT_NAME}_cem PRIVATE
     ${PROJECT_NAME}
+    TBB::tbb
 )
 target_include_directories(${PROJECT_NAME}_cem PUBLIC /usr/local/include)
+target_compile_options(${PROJECT_NAME}_cem PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
+
+# Add Towr example
+find_package(towr 1.2 REQUIRED)
+
+add_executable(${PROJECT_NAME}_cem_towr examples/trajopt_cem_towr.cpp)
+target_include_directories(${PROJECT_NAME}_cem_towr PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(${PROJECT_NAME}_cem_towr PRIVATE
+    ${PROJECT_NAME}
+    TBB:tbb
+    towr::towr
+)
+target_include_directories(${PROJECT_NAME}_cem_towr PUBLIC /usr/local/include)
+target_compile_options(${PROJECT_NAME}_cem_towr PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
