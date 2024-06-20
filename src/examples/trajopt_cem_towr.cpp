@@ -210,7 +210,7 @@ void towrAnymalNlp(
         }
 
         Eigen::Vector3d initPos(init_x, init_y, init_z);
-        std::cout << "Init pos " << i << ": " << initPos.transpose() << std::endl;
+        // std::cout << "Init pos " << i << ": " << initPos.transpose() << std::endl;
         formulation.initial_ee_W_.push_back(initPos);
     }
 
@@ -248,6 +248,8 @@ void towrAnymalNlp(
     formulation.params_.duration_base_polynomial_ = totalTime / static_cast<double>(numKnots - 1);
 
     formulation.params_.dt_constraint_dynamic_ = totalTime / static_cast<double>(numSamples - 1.);
+    formulation.params_.dt_constraint_base_motion_ = totalTime / static_cast<double>(numSamples - 1.);
+    formulation.params_.dt_constraint_range_of_motion_ = totalTime / static_cast<double>(numSamples - 1.);
 
     towr::SplineHolder solution;
     for (auto c : formulation.GetVariableSets(solution))

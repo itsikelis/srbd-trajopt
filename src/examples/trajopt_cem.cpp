@@ -27,7 +27,7 @@ public:
 
     Scalar eval(const x_t& x)
     {
-        std::cout << "Num Steps: " << x[0] + 2 << ", " << x[1] + 2 << ", " << x[2] + 2 << ", " << x[3] + 2 << std::endl;
+        // std::cout << "Num Steps: " << x[0] + 2 << ", " << x[1] + 2 << ", " << x[2] + 2 << ", " << x[3] + 2 << std::endl;
         trajopt::SrbdTrajopt::Params params;
 
         params.numKnots = 10;
