@@ -15,7 +15,7 @@ size_t GetNumViolations(const ifopt::Composite& comp, double tol = 1e-4);
 size_t GetNumViolations(const ifopt::Problem& nlp, double tol = 1e-4);
 
 void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double swingDuration, double stanceDuration, bool standingAtStart);
-void towrAnymalNlp(ifopt::Problem& nlp, Eigen::Matrix<unsigned int, 1, 4> numSteps, double stanceDuration, double swingDuration, std::vector<bool> standingAtStart, size_t numKnots, size_t numSamples);
+void towrAnymalNlp(ifopt::Problem& nlp, Eigen::Matrix<unsigned int, 1, 4> numSteps, double stanceDuration, double swingDuration, std::vector<bool> standingAtStart, size_t numKnots, size_t numSamples, bool optimiseTime = true);
 
 template <typename Scalar = double>
 struct FitDiscrete {
@@ -49,7 +49,7 @@ public:
         std::vector<bool> standingAtStart(4, true);
         double swingDuration = 0.1;
         double stanceDuration = 0.2;
-        towrAnymalNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart, numKnots, numSamples);
+        towrAnymalNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart, numKnots, numSamples, true);
 
         auto solver = std::make_shared<ifopt::IpoptSolver>();
         solver->SetOption("jacobian_approximation", "exact");
@@ -65,8 +65,6 @@ public:
 
         return -cost;
     }
-
-protected:
 };
 
 // Typedefs
@@ -173,7 +171,8 @@ void towrAnymalNlp(
     double stanceDuration, double swingDuration,
     std::vector<bool> standingAtStart,
     size_t numKnots,
-    size_t numSamples)
+    size_t numSamples,
+    bool optimiseTime)
 {
     towr::NlpFormulation formulation;
 
@@ -245,11 +244,15 @@ void towrAnymalNlp(
     trajopt::fixDurations(formulation.params_.ee_phase_durations_);
 
     double totalTime = std::accumulate(formulation.params_.ee_phase_durations_[0].begin(), formulation.params_.ee_phase_durations_[0].end(), 0.);
-    formulation.params_.duration_base_polynomial_ = totalTime / static_cast<double>(numKnots - 1);
+    // formulation.params_.duration_base_polynomial_ = totalTime / static_cast<double>(numKnots - 1);
 
-    formulation.params_.dt_constraint_dynamic_ = totalTime / static_cast<double>(numSamples - 1.);
-    formulation.params_.dt_constraint_base_motion_ = totalTime / static_cast<double>(numSamples - 1.);
-    formulation.params_.dt_constraint_range_of_motion_ = totalTime / static_cast<double>(numSamples - 1.);
+    // formulation.params_.dt_constraint_dynamic_ = totalTime / static_cast<double>(numSamples - 1.);
+    // formulation.params_.dt_constraint_base_motion_ = totalTime / static_cast<double>(numSamples - 1.);
+    // formulation.params_.dt_constraint_range_of_motion_ = totalTime / static_cast<double>(numSamples - 1.);
+
+    if (optimiseTime) {
+        formulation.params_.OptimizePhaseDurations();
+    }
 
     towr::SplineHolder solution;
     for (auto c : formulation.GetVariableSets(solution))

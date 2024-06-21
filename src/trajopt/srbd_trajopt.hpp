@@ -74,7 +74,7 @@ namespace trajopt {
 
             // IPOPT Parameters
             std::string jacobianApproximation = "exact";
-            double maxCpuTime = 2.;
+            double maxCpuTime = 10.;
             size_t maxIters = 1000;
         };
 
