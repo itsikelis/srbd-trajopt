@@ -44,7 +44,7 @@ target_link_libraries(${PROJECT_NAME}_cem PRIVATE
     TBB::tbb
 )
 target_include_directories(${PROJECT_NAME}_cem PUBLIC /usr/local/include)
-# target_compile_options(${PROJECT_NAME}_cem PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
+target_compile_options(${PROJECT_NAME}_cem PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
 
 # Add Towr example
 find_package(towr 1.2 REQUIRED)
@@ -57,4 +57,4 @@ target_link_libraries(${PROJECT_NAME}_cem_towr PRIVATE
     towr::towr
 )
 target_include_directories(${PROJECT_NAME}_cem_towr PUBLIC /usr/local/include)
-# target_compile_options(${PROJECT_NAME}_cem_towr PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
+target_compile_options(${PROJECT_NAME}_cem_towr PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)

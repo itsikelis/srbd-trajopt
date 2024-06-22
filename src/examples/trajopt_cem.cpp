@@ -30,17 +30,17 @@ public:
         // std::cout << "Num Steps: " << x[0] + 2 << ", " << x[1] + 2 << ", " << x[2] + 2 << ", " << x[3] + 2 << std::endl;
         trajopt::SrbdTrajopt::Params params;
 
-        params.numKnots = 10;
-        params.numSamples = 16;
+        params.numKnots = 20;
+        params.numSamples = 24;
 
         size_t posKnotsInSwingPhase = 1;
-        size_t forceKnotsInStancePhase = 5;
+        size_t forceKnotsInStancePhase = 3;
 
         params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.height(0., 0.));
-        params.targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.height(0.2, 0.));
+        params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + _terrain.height(1.5, 0.));
 
         params.initBodyRot = Eigen::Vector3d::Zero();
-        params.targetBodyRot = Eigen::Vector3d::Zero();
+        params.targetBodyRot = Eigen::Vector3d(M_PI, 0., 0.);
 
         params.maxForce = 2. * _model.mass * std::abs(_model.gravity[2]);
         params.addCost = false;
@@ -51,6 +51,9 @@ public:
         params.phaseTimes.resize(_model.numFeet);
         params.stepKnotsPerSwing.resize(_model.numFeet);
         params.forceKnotsPerSwing.resize(_model.numFeet);
+
+        params.maxWallTime = 20.;
+        params.printLevel = 5;
 
         for (size_t i = 0; i < _model.numFeet; ++i) {
             std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.1, posKnotsInSwingPhase, forceKnotsInStancePhase, params.initialFootPhases[i]);
@@ -97,7 +100,6 @@ int main()
         std::cout << cem.probabilities() << std::endl
                   << std::endl;
     }
-
     return 0;
 }
 

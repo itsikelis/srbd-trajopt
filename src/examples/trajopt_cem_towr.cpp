@@ -14,7 +14,7 @@
 size_t GetNumViolations(const ifopt::Composite& comp, double tol = 1e-4);
 size_t GetNumViolations(const ifopt::Problem& nlp, double tol = 1e-4);
 
-void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double swingDuration, double stanceDuration, bool standingAtStart);
+void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double swingDuration, double stanceDuration, bool standingAtStart, bool optimiseTime = false);
 void towrAnymalNlp(ifopt::Problem& nlp, Eigen::Matrix<unsigned int, 1, 4> numSteps, double stanceDuration, double swingDuration, std::vector<bool> standingAtStart, size_t numKnots, size_t numSamples, bool optimiseTime = true);
 
 template <typename Scalar = double>
@@ -36,24 +36,27 @@ public:
         size_t numKnots = 10;
         size_t numSamples = 16;
 
-        // Hopper Problem
+        // // Hopper Problem
         // size_t numSteps = x[0] + 2;
         // double swingDuration = 0.1;
         // double stanceDuration = 0.2;
         // bool standingAtStart = true;
-        // towrHopperNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart);
+        // bool optimiseTime = true;
+        // towrHopperNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart, optimiseTime);
 
+        // Anymal Problem
         x_t numSteps = x;
         for (auto& item : numSteps)
             item += 2;
         std::vector<bool> standingAtStart(4, true);
         double swingDuration = 0.1;
         double stanceDuration = 0.2;
-        towrAnymalNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart, numKnots, numSamples, true);
+        bool optimiseTime = true;
+        towrAnymalNlp(nlp, numSteps, stanceDuration, swingDuration, standingAtStart, numKnots, numSamples, optimiseTime);
 
         auto solver = std::make_shared<ifopt::IpoptSolver>();
         solver->SetOption("jacobian_approximation", "exact");
-        solver->SetOption("max_cpu_time", 2.);
+        solver->SetOption("max_wall_time", 12.);
         solver->SetOption("max_iter", 1000);
         solver->SetOption("print_level", 0);
 
@@ -121,7 +124,7 @@ size_t GetNumViolations(const ifopt::Problem& nlp, double tol)
     return n;
 }
 
-void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double stanceDuration, double swingDuration, bool standingAtStart)
+void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double stanceDuration, double swingDuration, bool standingAtStart, bool optimiseTime)
 {
     towr::NlpFormulation formulation;
 
@@ -132,6 +135,11 @@ void towrHopperNlp(ifopt::Problem& nlp, size_t numSteps, double stanceDuration, 
     formulation.initial_ee_W_.push_back(Eigen::Vector3d::Zero());
 
     formulation.final_base_.lin.at(towr::kPos) << 1.0, 0.0, 0.5;
+
+    if (optimiseTime) {
+        formulation.params_.bound_phase_duration_ = std::make_pair(0.1, numSteps * 0.2 + (numSteps - 1) * 0.1);
+        formulation.params_.OptimizePhaseDurations();
+    }
 
     std::vector<double> durations;
 
@@ -180,10 +188,24 @@ void towrAnymalNlp(
     formulation.model_ = towr::RobotModel(towr::RobotModel::Anymal);
 
     formulation.initial_base_.lin.at(towr::kPos).z() = 0.5;
-    formulation.final_base_.lin.at(towr::kPos) << 0.0, 0.0, 0.5;
+    formulation.final_base_.lin.at(towr::kPos) << 1.5, 0.0, 0.5;
 
-    formulation.params_.force_polynomials_per_stance_phase_ = 6;
+    formulation.final_base_.ang.at(towr::kPos).z() = M_PI;
+
+    formulation.params_.force_polynomials_per_stance_phase_ = 4;
     formulation.params_.ee_polynomials_per_swing_phase_ = 2;
+
+    if (optimiseTime) {
+        // Find max num of steps
+        unsigned int max = 0.;
+        for (auto& s : numSteps) {
+            if (s > max) {
+                max = s;
+            }
+        }
+        formulation.params_.bound_phase_duration_ = std::make_pair(0.1, max * 0.2 + (max - 1) * 0.1);
+        formulation.params_.OptimizePhaseDurations();
+    }
 
     for (size_t i = 0; i < 4; ++i) {
         double init_x = formulation.initial_base_.lin.at(towr::kPos).x();
@@ -244,15 +266,11 @@ void towrAnymalNlp(
     trajopt::fixDurations(formulation.params_.ee_phase_durations_);
 
     double totalTime = std::accumulate(formulation.params_.ee_phase_durations_[0].begin(), formulation.params_.ee_phase_durations_[0].end(), 0.);
-    // formulation.params_.duration_base_polynomial_ = totalTime / static_cast<double>(numKnots - 1);
+    formulation.params_.duration_base_polynomial_ = totalTime / static_cast<double>(numKnots - 1);
 
-    // formulation.params_.dt_constraint_dynamic_ = totalTime / static_cast<double>(numSamples - 1.);
-    // formulation.params_.dt_constraint_base_motion_ = totalTime / static_cast<double>(numSamples - 1.);
-    // formulation.params_.dt_constraint_range_of_motion_ = totalTime / static_cast<double>(numSamples - 1.);
-
-    if (optimiseTime) {
-        formulation.params_.OptimizePhaseDurations();
-    }
+    formulation.params_.dt_constraint_dynamic_ = totalTime / static_cast<double>(numSamples - 1.);
+    formulation.params_.dt_constraint_base_motion_ = totalTime / static_cast<double>(numSamples - 1.);
+    formulation.params_.dt_constraint_range_of_motion_ = totalTime / static_cast<double>(numSamples - 1.);
 
     towr::SplineHolder solution;
     for (auto c : formulation.GetVariableSets(solution))
