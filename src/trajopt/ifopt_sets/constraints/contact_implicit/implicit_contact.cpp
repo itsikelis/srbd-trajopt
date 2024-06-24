@@ -16,8 +16,8 @@ ImplicitContactConstraints::VectorXd ImplicitContactConstraints::GetValues() con
         Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
         Eigen::VectorXd force = force_traj->trajectoryEval(dt, 0);
 
-        double f_n = force.dot(_terrain.n(pos[0], pos[1]));
-        double phi = pos[2] - _terrain.height(pos[0], pos[1]);
+        double f_n = force.dot(_terrain.GetNormalizedBasis(TerrainGrid::Normal, pos[0], pos[1]));
+        double phi = pos[2] - _terrain.GetHeight(pos[0], pos[1]);
         g[i] = f_n * phi;
 
         dt += _sampleTime;
@@ -43,9 +43,9 @@ void ImplicitContactConstraints::FillJacobianBlock(std::string var_set, Implicit
             Jacobian dForce = force_traj->trajectoryJacobian(dt, 0);
 
             Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
-            auto phi = pos[2] - _terrain.height(pos[0], pos[1]);
+            auto phi = pos[2] - _terrain.GetHeight(pos[0], pos[1]);
 
-            Eigen::Vector3d n = _terrain.n(pos[0], pos[1]);
+            Eigen::Vector3d n = _terrain.GetNormalizedBasis(TerrainGrid::Normal, pos[0], pos[1]);
 
             // TODO: Find a better way to do this.
             jac_block.middleRows(i, 1) += n[0] * phi * dForce.middleRows(0, 1);
@@ -63,12 +63,13 @@ void ImplicitContactConstraints::FillJacobianBlock(std::string var_set, Implicit
             Eigen::VectorXd pos = pos_traj->trajectoryEval(dt, 0);
             Eigen::VectorXd force = force_traj->trajectoryEval(dt, 0);
 
-            auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+            double terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
+            double terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
 
-            double f_n = force.dot(_terrain.n(pos[0], pos[1]));
+            double f_n = force.dot(_terrain.GetNormalizedBasis(TerrainGrid::Normal, pos[0], pos[1]));
 
-            jac_block.middleRows(i, 1) = f_n * (-terrain_d[0]) * dPos.middleRows(0, 1);
-            jac_block.middleRows(i, 1) = f_n * (-terrain_d[1]) * dPos.middleRows(1, 1);
+            jac_block.middleRows(i, 1) = f_n * (-terrain_dx) * dPos.middleRows(0, 1);
+            jac_block.middleRows(i, 1) = f_n * (-terrain_dy) * dPos.middleRows(1, 1);
             jac_block.middleRows(i, 1) = f_n * 1. * dPos.middleRows(2, 1);
 
             dt += _sampleTime;

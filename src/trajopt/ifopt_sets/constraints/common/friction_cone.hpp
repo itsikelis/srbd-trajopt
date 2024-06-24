@@ -37,15 +37,15 @@ namespace trajopt {
                 double x = pos[0];
                 double y = pos[1];
 
-                double fn = f.dot(_terrain.n(x, y));
-                double ft = f.dot(_terrain.t(x, y));
-                double fb = f.dot(_terrain.b(x, y));
+                double fn = f.dot(_terrain.GetNormalizedBasis(TerrainGrid::Normal, x, y));
+                double ft1 = f.dot(_terrain.GetNormalizedBasis(TerrainGrid::Tangent1, x, y));
+                double ft2 = f.dot(_terrain.GetNormalizedBasis(TerrainGrid::Tangent2, x, y));
 
                 g[i * 5 + 0] = fn;
-                g[i * 5 + 1] = ft - _terrain.mu() * fn;
-                g[i * 5 + 2] = -ft - _terrain.mu() * fn;
-                g[i * 5 + 3] = fb - _terrain.mu() * fn;
-                g[i * 5 + 4] = -fb - _terrain.mu() * fn;
+                g[i * 5 + 1] = ft1 - _terrain.GetFrictionCoeff() * fn;
+                g[i * 5 + 2] = -ft1 - _terrain.GetFrictionCoeff() * fn;
+                g[i * 5 + 3] = ft2 - _terrain.GetFrictionCoeff() * fn;
+                g[i * 5 + 4] = -ft2 - _terrain.GetFrictionCoeff() * fn;
 
                 t += _sampleTime;
             }
@@ -81,22 +81,22 @@ namespace trajopt {
                     auto x = footPos[0];
                     auto y = footPos[1];
 
-                    Eigen::Vector3d n = _terrain.n(x, y);
-                    Eigen::Vector3d tt = _terrain.t(x, y);
-                    Eigen::Vector3d tb = _terrain.b(x, y);
+                    Eigen::Vector3d n = _terrain.GetNormalizedBasis(TerrainGrid::Normal, x, y);
+                    Eigen::Vector3d t1 = _terrain.GetNormalizedBasis(TerrainGrid::Tangent1, x, y);
+                    Eigen::Vector3d t2 = _terrain.GetNormalizedBasis(TerrainGrid::Tangent2, x, y);
                     Jacobian mult0 = n.transpose().sparseView(1, -1);
                     Jacobian res0 = mult0 * fPos;
 
-                    Jacobian mult1 = (tt - _terrain.mu() * n).transpose().sparseView(1, -1);
+                    Jacobian mult1 = (t1 - _terrain.GetFrictionCoeff() * n).transpose().sparseView(1, -1);
                     Jacobian res1 = mult1 * fPos;
 
-                    Jacobian mult2 = (-tt - _terrain.mu() * n).transpose().sparseView(1, -1);
+                    Jacobian mult2 = (-t1 - _terrain.GetFrictionCoeff() * n).transpose().sparseView(1, -1);
                     Jacobian res2 = mult2 * fPos;
 
-                    Jacobian mult3 = (tb - _terrain.mu() * n).transpose().sparseView(1, -1);
+                    Jacobian mult3 = (t2 - _terrain.GetFrictionCoeff() * n).transpose().sparseView(1, -1);
                     Jacobian res3 = mult3 * fPos;
 
-                    Jacobian mult4 = (-tb - _terrain.mu() * n).transpose().sparseView(1, -1);
+                    Jacobian mult4 = (-t2 - _terrain.GetFrictionCoeff() * n).transpose().sparseView(1, -1);
                     Jacobian res4 = mult4 * fPos;
 
                     jac_block.middleRows(i * 5 + 0, 1) += res0;

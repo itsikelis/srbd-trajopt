@@ -16,14 +16,14 @@ FootTerrainDistancePhased::VectorXd FootTerrainDistancePhased::GetValues() const
     size_t sIdx = 0;
     for (size_t i = 0; i < _numPhases; ++i) {
         if (standing) {
-            g(cIdx++) = values[valIdx + 2] - _terrain.height(values[valIdx], values[valIdx + 1]);
+            g(cIdx++) = values[valIdx + 2] - _terrain.GetHeight(values[valIdx], values[valIdx + 1]);
             valIdx += 3;
         }
         else {
             size_t swingKnots = _numKnotsPerSwing[sIdx];
             sIdx++;
             for (size_t k = 0; k < swingKnots; ++k) {
-                g(cIdx++) = values[valIdx + 2] - _terrain.height(values[valIdx], values[valIdx + 1]);
+                g(cIdx++) = values[valIdx + 2] - _terrain.GetHeight(values[valIdx], values[valIdx + 1]);
                 valIdx += 6;
             }
         }
@@ -76,23 +76,25 @@ void FootTerrainDistancePhased::FillJacobianBlock(std::string var_set, FootTerra
 
             if (standing) {
                 Eigen::VectorXd pos = vars.segment(colIdx, 3);
-                auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+                double terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
+                double terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::Y_, pos[0], pos[1]);
 
-                jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_d[0];
-                jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_d[1];
+                jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_dx;
+                jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_dy;
                 jac_block.coeffRef(rowIdx, colIdx + 2) = 1.;
                 rowIdx++;
                 colIdx += 3;
             }
             else {
                 Eigen::VectorXd pos = vars.segment(colIdx, 3);
-                auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+                double terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
+                double terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::Y_, pos[0], pos[1]);
 
                 size_t swingKnots = _numKnotsPerSwing[sIdx];
                 sIdx++;
                 for (size_t k = 0; k < swingKnots; ++k) {
-                    jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_d[0];
-                    jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_d[1];
+                    jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_dx;
+                    jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_dy;
                     jac_block.coeffRef(rowIdx, colIdx + 2) = 1.;
                     rowIdx++;
                     colIdx += 6;

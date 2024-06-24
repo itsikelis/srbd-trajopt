@@ -22,7 +22,7 @@ public:
     FitDiscrete()
     {
         trajopt::init_model_anymal(_model);
-        _terrain.set_zero();
+        _terrain.SetZero();
     }
 
     Scalar eval(const x_t& x)
@@ -36,8 +36,8 @@ public:
         size_t posKnotsInSwingPhase = 1;
         size_t forceKnotsInStancePhase = 3;
 
-        params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.height(0., 0.));
-        params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + _terrain.height(1.5, 0.));
+        params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + _terrain.GetHeight(0., 0.));
+        params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + _terrain.GetHeight(1.5, 0.));
 
         params.initBodyRot = Eigen::Vector3d::Zero();
         params.targetBodyRot = Eigen::Vector3d(M_PI, 0., 0.);

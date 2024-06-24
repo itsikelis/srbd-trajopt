@@ -29,15 +29,15 @@ int main()
     trajopt::init_model_anymal(model);
 
     trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
-    terrain.set_zero();
+    terrain.SetZero();
 
     trajopt::SrbdTrajopt::Params params;
 
     params.numKnots = 20;
     params.numSamples = 24;
 
-    params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
-    params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + terrain.height(0.2, 0.));
+    params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.GetHeight(0., 0.));
+    params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + terrain.GetHeight(0.2, 0.));
 
     params.initBodyRot = Eigen::Vector3d::Zero();
     params.targetBodyRot = Eigen::Vector3d(M_PI / 3, 0., 0.);

@@ -4,7 +4,7 @@ target_include_directories(test_terrain PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 # Link libraries and add compiler options
 target_link_libraries(test_terrain PUBLIC
-  Eigen3::Eigen
+  ${PROJECT_NAME}
 )
 
 target_compile_options(test_terrain PRIVATE "-Wall;-Wextra;-O3")

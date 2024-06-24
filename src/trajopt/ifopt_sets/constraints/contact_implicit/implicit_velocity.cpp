@@ -17,7 +17,7 @@ ImplicitVelocityConstraints::VectorXd ImplicitVelocityConstraints::GetValues() c
         Eigen::VectorXd force = forceVars->trajectoryEval(dt + _sampleTime, 0);
         Eigen::VectorXd pos_next = posVars->trajectoryEval(dt + _sampleTime, 0);
 
-        double f_n = force.dot(_terrain.n(pos_next[0], pos_next[1]));
+        double f_n = force.dot(_terrain.GetNormalizedBasis(TerrainGrid::Normal, pos_next[0], pos_next[1]));
         g.segment((i - 1) * 3, 3) = f_n * (pos_next - pos_prev);
 
         dt += _sampleTime;
@@ -47,7 +47,7 @@ void ImplicitVelocityConstraints::FillJacobianBlock(std::string var_set, Implici
             Eigen::VectorXd pos_next = posVars->trajectoryEval(dt + _sampleTime, 0);
             Eigen::VectorXd vel = (pos_next - pos_prev);
 
-            Eigen::Vector3d n = _terrain.n(pos_next[0], pos_next[1]);
+            Eigen::Vector3d n = _terrain.GetNormalizedBasis(TerrainGrid::Normal, pos_next[0], pos_next[1]);
 
             Jacobian mult(3, 3);
             for (size_t k = 0; k < 3; ++k) {
@@ -71,7 +71,7 @@ void ImplicitVelocityConstraints::FillJacobianBlock(std::string var_set, Implici
             Eigen::VectorXd pos_next = posVars->trajectoryEval(dt + _sampleTime, 0);
             Eigen::VectorXd force = forceVars->trajectoryEval(dt + _sampleTime, 0);
 
-            double f_n = force.dot(_terrain.n(pos_next[0], pos_next[1]));
+            double f_n = force.dot(_terrain.GetNormalizedBasis(TerrainGrid::Normal, pos_next[0], pos_next[1]));
 
             jac_block.middleRows((i - 1) * 3, 3) = f_n * (dPos_next - dPos_prev);
             dt += _sampleTime;

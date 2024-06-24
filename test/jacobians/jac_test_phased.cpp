@@ -53,7 +53,7 @@ int main()
     for (auto& item : grid) {
         item = 0.;
     }
-    terrain.set_grid(grid);
+    terrain.SetGrid(grid);
 
     // Add variable sets.
     ifopt::Problem nlp;
@@ -70,7 +70,7 @@ int main()
 
     // Add body pos and rot var sets.
     Vector3d initBodyPos = Vector3d(0., 0., 0.5);
-    Vector3d targetBodyPos = Vector3d(0., 0., 0.5 + terrain.height(0., 0.));
+    Vector3d targetBodyPos = Vector3d(0., 0., 0.5 + terrain.GetHeight(0., 0.));
     ifopt::Component::VecBound bodyPosBounds = trajopt::fillBoundVector(initBodyPos, Vector3d::Zero(), targetBodyPos, Vector3d::Zero(), ifopt::NoBound, 6 * numKnots);
     auto initBodyPosVals = VectorXd(3 * 2 * numKnots);
 

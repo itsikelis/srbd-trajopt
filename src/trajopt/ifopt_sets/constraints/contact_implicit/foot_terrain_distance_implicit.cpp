@@ -22,7 +22,7 @@ FootTerrainDistanceImplicit::VectorXd FootTerrainDistanceImplicit::GetValues() c
     for (size_t i = 0; i < _numSamples; ++i) {
         Eigen::VectorXd pos = vars->trajectoryEval(t, 0);
 
-        double phi = pos[2] - _terrain.height(pos[0], pos[1]);
+        double phi = pos[2] - _terrain.GetHeight(pos[0], pos[1]);
         g[i] = phi;
 
         t += _sampleTime;
@@ -47,10 +47,11 @@ void FootTerrainDistanceImplicit::FillJacobianBlock(std::string var_set, FootTer
             Eigen::VectorXd pos = vars->trajectoryEval(t, 0);
             Jacobian dPos = vars->trajectoryJacobian(t, 0);
 
-            auto terrain_d = _terrain.jacobian(pos[0], pos[1]);
+            auto terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
+            auto terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::Y_, pos[0], pos[1]);
 
-            jac_block.middleRows(i, 1) = -terrain_d[0] * dPos.middleRows(0, 1);
-            jac_block.middleRows(i, 1) = -terrain_d[1] * dPos.middleRows(1, 1);
+            jac_block.middleRows(i, 1) = -terrain_dx * dPos.middleRows(0, 1);
+            jac_block.middleRows(i, 1) = -terrain_dy * dPos.middleRows(1, 1);
             jac_block.middleRows(i, 1) = 1. * dPos.middleRows(2, 1);
 
             t += _sampleTime;
