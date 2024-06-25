@@ -70,11 +70,7 @@ namespace trajopt {
 
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
-            if (var_set == _posVarsName) {
-                auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-                auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
-            }
-            else if (var_set == _forceVarsName) {
+            if (var_set == _forceVarsName) {
                 auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
                 auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
 
