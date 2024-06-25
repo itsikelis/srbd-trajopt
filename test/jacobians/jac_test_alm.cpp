@@ -1,5 +1,6 @@
 #include <ctime>
 #include <iostream>
+#include <random>
 
 #include <ifopt/problem.h>
 
@@ -92,8 +93,21 @@ int main()
     trajopt::init_model_anymal(model);
     // trajopt::init_model_biped(model);
 
-    trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
-    terrain.SetZero();
+    trajopt::TerrainGrid terrain(200, 200, 0.7, 0, 0, 200, 200);
+    std::vector<double> grid;
+
+    // Create a random grid for the terrain.
+    double lower = -0.1;
+    double upper = 0.1;
+    std::uniform_real_distribution<double> unif(lower, upper);
+    std::default_random_engine re;
+    re.seed(std::time(0));
+
+    grid.resize(200 * 200);
+    for (auto& item : grid) {
+        item = unif(re);
+    }
+    terrain.SetGrid(grid);
 
     Eigen::Vector3d initBodyPos = Eigen::Vector3d(initBodyPosX, initBodyPosY, initBodyPosZ + terrain.GetHeight(initBodyPosX, initBodyPosY));
     Eigen::Vector3d targetBodyPos = Eigen::Vector3d(targetBodyPosX, targetBodyPosY, targetBodyPosZ + terrain.GetHeight(targetBodyPosX, targetBodyPosY));

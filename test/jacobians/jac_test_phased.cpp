@@ -32,7 +32,7 @@ using Eigen::VectorXd;
 
 static const std::vector<std::string> VarSetNames = {trajopt::BODY_POS_TRAJECTORY, trajopt::BODY_ROT_TRAJECTORY, trajopt::FOOT_POS + "_0", trajopt::FOOT_FORCE + "_0", trajopt::FOOT_POS + "_1", trajopt::FOOT_FORCE + "_1", trajopt::FOOT_POS + "_2", trajopt::FOOT_FORCE + "_2", trajopt::FOOT_POS + "_3", trajopt::FOOT_FORCE + "_3"};
 static const double Tolerance = 1e-5;
-static const bool Viz = false;
+static const bool Viz = true;
 
 void test_constr_jacobians(const ifopt::Problem& nlp, const std::vector<std::string>& var_set_names, const std::shared_ptr<ifopt::ConstraintSet>& constr_sets, double tol, bool viz);
 
@@ -45,13 +45,19 @@ int main()
     trajopt::SingleRigidBodyDynamicsModel model;
     trajopt::init_model_anymal(model);
 
-    // Create a Terrain Model (Select from predefined ones)
-    // trajopt::Terrain terrain("");
-    trajopt::TerrainGrid terrain(200, 200, 0.7, 0, 0, 200, 200);
+    trajopt::TerrainGrid terrain(200, 200, 0.7, -100, 100, 100, 100);
     std::vector<double> grid;
+
+    // Create a random grid for the terrain.
+    double lower = -1.;
+    double upper = 1.;
+    std::uniform_real_distribution<double> unif(lower, upper);
+    std::default_random_engine re;
+    re.seed(std::time(0));
+
     grid.resize(200 * 200);
     for (auto& item : grid) {
-        item = 0.;
+        item = unif(re);
     }
     terrain.SetGrid(grid);
 

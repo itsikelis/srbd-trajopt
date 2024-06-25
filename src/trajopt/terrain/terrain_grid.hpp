@@ -4,9 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <fstream>
-#include <iostream>
-
 #include <eigen3/Eigen/Dense>
 
 namespace trajopt {
@@ -42,15 +39,18 @@ namespace trajopt {
         double GetFrictionCoeff() const { return mu_; }
 
     protected:
-        inline double BilinearInterpolation(double x_norm, double y_norm) const;
+        double BilinearInterpolation(double x_norm, double y_norm) const;
 
-        double GetSecondDerivativeOfHeightWrt(Dim2D dim1, Dim2D dim2, double x, double y) const;
+        double BilinearInterpolationDerivWrt(Dim2D dim, double x, double y) const;
+        double BilinearInterpolationDerivWrtX(double x, double y) const;
+        double BilinearInterpolationDerivWrtY(double x, double y) const;
 
-        inline double GetHeightDerivWrtXX(double x, double y) const;
-        inline double GetHeightDerivWrtXY(double x, double y) const;
+        double BilinearInterpolationSecondDerivWrt(Dim2D dim1, Dim2D dim2, double x, double y) const;
 
-        inline double GetHeightDerivWrtYX(double x, double y) const;
-        inline double GetHeightDerivWrtYY(double x, double y) const;
+        double BilinearInterpolationSecondDerivWrtXX() const;
+        double BilinearInterpolationSecondDerivWrtXY(double x, double y) const;
+        double BilinearInterpolationSecondDerivWrtYX(double x, double y) const;
+        double BilinearInterpolationSecondDerivWrtYY() const;
 
         std::vector<double> Split(const std::string& s, char delimiter) const;
 

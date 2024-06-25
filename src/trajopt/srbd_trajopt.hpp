@@ -126,20 +126,20 @@ namespace trajopt {
                 Eigen::VectorXd initFootForceVals = Eigen::VectorXd::Zero(3 * numForceSteps + 6 * std::accumulate(_params.forceKnotsPerSwing[i].begin(), _params.forceKnotsPerSwing[i].end(), 0));
 
                 ifopt::Component::VecBound footPosBounds(3 * _params.numSteps[i] + 6 * std::accumulate(_params.stepKnotsPerSwing[i].begin(), _params.stepKnotsPerSwing[i].end(), 0), ifopt::NoBound);
-                size_t numPhases = _params.numSteps[i] + _params.stepKnotsPerSwing[i].size();
-                size_t idx = 0;
-                bool isStance = (_params.initialFootPhases[i] == rspl::Phase::Stance) ? true : false;
-                for (size_t k = 0; k < numPhases; ++k) {
-                    if (isStance)
-                        idx += 3;
-                    else {
-                        footPosBounds[idx + 3] = ifopt::Bounds(-1., 1.);
-                        footPosBounds[idx + 4] = ifopt::Bounds(-1., 1.);
-                        footPosBounds[idx + 5] = ifopt::Bounds(-1., 1.);
-                        idx += 6;
-                    }
-                    isStance = !isStance;
-                }
+                // size_t numPhases = _params.numSteps[i] + _params.stepKnotsPerSwing[i].size();
+                // size_t idx = 0;
+                // bool isStance = (_params.initialFootPhases[i] == rspl::Phase::Stance) ? true : false;
+                // for (size_t k = 0; k < numPhases; ++k) {
+                //     if (isStance)
+                //         idx += 3;
+                //     else {
+                //         footPosBounds[idx + 3] = ifopt::Bounds(-1., 1.);
+                //         footPosBounds[idx + 4] = ifopt::Bounds(-1., 1.);
+                //         footPosBounds[idx + 5] = ifopt::Bounds(-1., 1.);
+                //         idx += 6;
+                //     }
+                //     isStance = !isStance;
+                // }
 
                 ifopt::Component::VecBound footForceBounds(3 * numForceSteps + 6 * std::accumulate(_params.forceKnotsPerSwing[i].begin(), _params.forceKnotsPerSwing[i].end(), 0), ifopt::Bounds(-_params.maxForce, _params.maxForce));
 

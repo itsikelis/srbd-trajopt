@@ -46,12 +46,19 @@ int main()
     trajopt::SingleRigidBodyDynamicsModel model;
     trajopt::init_model_anymal(model);
 
-    // TODO: Handle zero grids.
-    trajopt::TerrainGrid terrain(200, 200, 0.7, -100, -100, 100, 100);
+    trajopt::TerrainGrid terrain(200, 200, 0.7, 0, 0, 200, 200);
     std::vector<double> grid;
+
+    // Create a random grid for the terrain.
+    double lower = -0.1;
+    double upper = 0.1;
+    std::uniform_real_distribution<double> unif(lower, upper);
+    std::default_random_engine re;
+    re.seed(std::time(0));
+
     grid.resize(200 * 200);
     for (auto& item : grid) {
-        item = 0.;
+        item = unif(re);
     }
     terrain.SetGrid(grid);
 

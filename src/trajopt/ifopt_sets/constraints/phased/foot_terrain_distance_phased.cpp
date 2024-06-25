@@ -86,13 +86,13 @@ void FootTerrainDistancePhased::FillJacobianBlock(std::string var_set, FootTerra
                 colIdx += 3;
             }
             else {
-                Eigen::VectorXd pos = vars.segment(colIdx, 3);
-                double terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
-                double terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::Y_, pos[0], pos[1]);
-
                 size_t swingKnots = _numKnotsPerSwing[sIdx];
                 sIdx++;
                 for (size_t k = 0; k < swingKnots; ++k) {
+                    Eigen::VectorXd pos = vars.segment(colIdx, 3);
+                    double terrain_dx = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::X_, pos[0], pos[1]);
+                    double terrain_dy = _terrain.GetDerivativeOfHeightWrt(TerrainGrid::Y_, pos[0], pos[1]);
+
                     jac_block.coeffRef(rowIdx, colIdx + 0) = -terrain_dx;
                     jac_block.coeffRef(rowIdx, colIdx + 1) = -terrain_dy;
                     jac_block.coeffRef(rowIdx, colIdx + 2) = 1.;
