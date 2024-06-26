@@ -70,9 +70,44 @@ namespace trajopt {
 
         void FillJacobianBlock(std::string var_set, Jacobian& jac_block) const override
         {
-            if (var_set == _forceVarsName) {
-                auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
-                auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+            auto forceVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_forceVarsName));
+            auto posVars = std::static_pointer_cast<FootTrajectoryVars>(GetVariables()->GetComponent(_posVarsName));
+
+            if (var_set == _posVarsName) {
+                double t = 0.;
+                for (size_t i = 0; i < _numSamples; ++i) {
+                    Eigen::Vector3d f = forceVars->trajectoryEval(t, 0);
+
+                    Eigen::Vector3d footPos = posVars->trajectoryEval(t, 0);
+                    auto x = footPos[0];
+                    auto y = footPos[1];
+
+                    Jacobian dPos = posVars->trajectoryJacobian(t, 0);
+
+                    double mu = _terrain.GetFrictionCoeff();
+
+                    Eigen::Vector3d dndx = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Normal, TerrainGrid::X_, x, y);
+                    Eigen::Vector3d dt1dx = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Tangent1, TerrainGrid::X_, x, y);
+                    Eigen::Vector3d dt2dx = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Tangent2, TerrainGrid::X_, x, y);
+
+                    Eigen::Vector3d dndy = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Normal, TerrainGrid::Y_, x, y);
+                    Eigen::Vector3d dt1dy = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Tangent1, TerrainGrid::Y_, x, y);
+                    Eigen::Vector3d dt2dy = _terrain.GetDerivativeOfNormalizedBasisWrt(TerrainGrid::Tangent2, TerrainGrid::Y_, x, y);
+
+                    Jacobian dfndxy = f.cwiseProduct(dndx).transpose().sparseView() * dPos + f.cwiseProduct(dndy).transpose().sparseView() * dPos;
+                    Jacobian dft1dxy = f.cwiseProduct(dt1dx).transpose().sparseView() * dPos + f.cwiseProduct(dt1dy).transpose().sparseView() * dPos;
+                    Jacobian dft2dxy = f.cwiseProduct(dt2dx).transpose().sparseView() * dPos + f.cwiseProduct(dt2dy).transpose().sparseView() * dPos;
+
+                    jac_block.middleRows(i * 5 + 0, 1) += dfndxy;
+                    jac_block.middleRows(i * 5 + 1, 1) += dft1dxy - mu * dfndxy;
+                    jac_block.middleRows(i * 5 + 2, 1) += -dft1dxy - mu * dfndxy;
+                    jac_block.middleRows(i * 5 + 3, 1) += dft2dxy - mu * dfndxy;
+                    jac_block.middleRows(i * 5 + 4, 1) += -dft2dxy - mu * dfndxy;
+
+                    t += _sampleTime;
+                }
+            }
+            else if (var_set == _forceVarsName) {
 
                 double t = 0.;
                 for (size_t i = 0; i < _numSamples; ++i) {
