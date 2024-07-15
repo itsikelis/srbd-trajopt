@@ -26,10 +26,40 @@ int main()
     std::srand(std::time(0));
 
     trajopt::SingleRigidBodyDynamicsModel model;
-    trajopt::init_model_anymal(model);
+    // trajopt::init_model_anymal(model);
+    trajopt::init_model_biped(model);
 
-    trajopt::TerrainGrid terrain(200, 200, 1., -100, -100, 100, 100);
-    terrain.SetZero();
+    trajopt::TerrainGrid terrain(20, 20, 1., -10, -10, 10, 10);
+    // terrain.SetZero();
+
+    trajopt::TerrainGrid::Grid grid;
+    grid.resize(20 * 20);
+    for (auto& g : grid) {
+        g = 0.;
+    }
+    for (size_t i = 0; i < 20; i++) {
+        for (size_t j = 0; j < 20; j++) {
+            grid.at(i * 20 + j) = -static_cast<double>(i) / 10.;
+        }
+    }
+    terrain.SetGrid(grid);
+
+    // trajopt::TerrainGrid::Grid grid;
+    //
+    // // Create a random grid for the terrain.
+    // double lower = -0.1;
+    // double upper = 0.1;
+    // std::uniform_real_distribution<double> unif(lower, upper);
+    // std::default_random_engine re;
+    // re.seed(std::time(0));
+    //
+    // grid.resize(20 * 20);
+    // for (auto& item : grid) {
+    //     double val = unif(re);
+    //     std::cout << "Val: " << val << std::endl;
+    //     item = val;
+    // }
+    // terrain.SetGrid(grid);
 
     trajopt::SrbdTrajopt::Params params;
 
@@ -37,14 +67,15 @@ int main()
     params.numSamples = 24;
 
     params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.GetHeight(0., 0.));
-    params.targetBodyPos = Eigen::Vector3d(0.2, 0., 0.5 + terrain.GetHeight(0.2, 0.));
+    params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + terrain.GetHeight(1.5, 0.));
 
     params.initBodyRot = Eigen::Vector3d::Zero();
-    params.targetBodyRot = Eigen::Vector3d(M_PI / 3, 0., 0.);
+    params.targetBodyRot = Eigen::Vector3d(0., 0., 0.);
 
-    params.numSteps = {2, 2, 2, 2};
+    params.numSteps = {3, 3, 3, 3};
 
-    params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
+    // params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
+    params.maxForce = 1e6;
     params.addCost = false;
 
     params.initialFootPhases = {trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance, trajopt::rspl::Phase::Stance};
@@ -54,7 +85,7 @@ int main()
     params.forceKnotsPerSwing.resize(model.numFeet);
 
     for (size_t i = 0; i < model.numFeet; ++i) {
-        std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.1, 1, 5, params.initialFootPhases[i]);
+        std::tie(params.phaseTimes[i], params.stepKnotsPerSwing[i], params.forceKnotsPerSwing[i]) = trajopt::createGait(params.numSteps[i], 0.2, 0.4, 1, 5, params.initialFootPhases[i]);
     }
 
     trajopt::fixDurations(params.phaseTimes);
@@ -67,8 +98,8 @@ int main()
     nlp.PrintCurrent();
 
 #if VIZ
-    double totalTime = std::accumulate(params.phaseTimes[3].begin(), params.phaseTimes[0].end(), 0.);
-    trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, 2 * totalTime, 0.001);
+    double totalTime = std::accumulate(params.phaseTimes[0].begin(), params.phaseTimes[0].end(), 0.);
+    trajopt::visualise<trajopt::PhasedTrajectoryVars>(nlp, model, 2 * totalTime, 0.001, "biped.mp4");
 #endif
 
     return 0;

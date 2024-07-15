@@ -6,6 +6,8 @@
 #include <trajopt/ifopt_sets/variables/trajectory_vars.hpp>
 #include <trajopt/terrain/terrain_grid.hpp>
 
+#include <iomanip>
+
 namespace trajopt {
     template <typename FootTrajectoryVars>
     class FrictionCone : public ifopt::ConstraintSet {
@@ -106,6 +108,54 @@ namespace trajopt {
 
                     t += _sampleTime;
                 }
+
+                // ////////////////////////////
+                // auto myVars = posVars;
+                //
+                // // Get Calculated Jacobian.
+                // auto jacDense = Eigen::MatrixXd(jac_block);
+                //
+                // // Calculate Jacobian using finite differences.
+                // Eigen::MatrixXd myJac(GetRows(), myVars->GetRows());
+                // double eps = 1e-6;
+                // VectorXd vals = myVars->GetValues();
+                //
+                // for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx) {
+                //     VectorXd vals_p = vals;
+                //     VectorXd vals_m = vals;
+                //     vals_p[colIdx] += eps;
+                //     vals_m[colIdx] -= eps;
+                //
+                //     myVars->SetVariables(vals_p);
+                //     auto dynam_p = GetValues();
+                //
+                //     myVars->SetVariables(vals_m);
+                //     auto dynam_m = GetValues();
+                //
+                //     myJac.col(colIdx) = (dynam_p - dynam_m) / (2 * eps);
+                // }
+                //
+                // // Test if differences are near zero.
+                // double err = abs((myJac - jacDense).norm());
+                // std::cout << "Jacobian error: " << err << std::endl;
+                // if (err > 1.) {
+                //     std::cout << std::setprecision(3);
+                //     for (int i = 0; i < myJac.rows(); i++) {
+                //         std::cout << "#" << i << std::endl;
+                //         atd::cout << "  Approx: ";
+                //         for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                //             std::cout << std::setw(8) << std::fixed << myJac(i, colIdx) << " ";
+                //         std::cout << std::endl;
+                //         //   << myJac.col(colIdx).transpose() << std::endl;
+                //         std::cout << "  Actual: ";
+                //         for (int colIdx = 0; colIdx < myVars->GetRows(); ++colIdx)
+                //             std::cout << std::setw(8) << std::fixed << jacDense(i, colIdx) << " ";
+                //         std::cout << std::endl;
+                //         //   << jacDense.col(colIdx).transpose() << std::endl;
+                //     }
+                // }
+                // myVars->SetVariables(vals);
+                // ////////////////////////
             }
             else if (var_set == _forceVarsName) {
 
