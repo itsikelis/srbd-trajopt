@@ -16,21 +16,20 @@ namespace trajopt::rspl {
     public:
         PhasedTrajectory() : Trajectory<_Dim>() {}
 
-        PhasedTrajectory(const Vector& knot_points, const std::vector<double>& phase_times,
-            const std::vector<size_t>& knots_per_swing, Phase init_phase)
+        PhasedTrajectory(const Vector& knot_points, const std::vector<double>& phase_times, const std::vector<size_t>& knots_per_swing, Phase init_phase)
             : Trajectory<_Dim>(knot_points.rows())
         {
             size_t num_phases = phase_times.size();
             size_t num_swing_phases = knots_per_swing.size();
             size_t num_stance_phases = num_phases - num_swing_phases;
 
-            // std::cout << "Total, Swing, Step: " << num_phases << ", " << num_swing_phases << ", " << num_stance_phases << std::endl;
+            // std::cout << "Total, Swing, Stance: " << num_phases << ", " << num_swing_phases << ", " << num_stance_phases << std::endl;
 
-            size_t num_knot_points = 2 * num_stance_phases + std::accumulate(knots_per_swing.begin(), knots_per_swing.end(), 0);
-            // std::cout << "Total Knot Points: " << num_knot_points << std::endl;
+            this->_num_knot_points = 2 * num_stance_phases + std::accumulate(knots_per_swing.begin(), knots_per_swing.end(), 0);
+            // std::cout << "Total Knot Points: " << num_knot_points << ", " << this->_num_knot_points << std::endl;
 
-            _is_stance.resize(num_knot_points - 1);
-            _var_start.resize(num_knot_points - 1);
+            _is_stance.resize(this->_num_knot_points - 1);
+            _var_start.resize(this->_num_knot_points - 1);
 
             bool is_stance = (init_phase == Phase::Stance) ? true : false;
 
@@ -93,8 +92,12 @@ namespace trajopt::rspl {
                     size_t swing_knots = knots_per_swing[swing_idx];
                     bool first_swing = (swing_idx == 0);
                     bool last_swing = (swing_idx == knots_per_swing.size() - 1);
+                    bool only_one_swing = (swing_idx == 0 && num_phases == 1);
 
-                    if (first_swing && starts_with_swing) {
+                    if (only_one_swing) {
+                        iters = swing_knots - 1;
+                    }
+                    else if (first_swing && starts_with_swing) {
                         iters = swing_knots;
                     }
                     else if (last_swing && ends_with_swing) {

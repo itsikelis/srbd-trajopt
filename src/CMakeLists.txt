@@ -21,40 +21,14 @@ if (RobotDART_FOUND AND RobotDART_Magnum_FOUND)
   )
 endif()
 
-target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3;-std=c++20") # ;-Werror
-
+target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3;") # ;-Werror
 
 # Add contact ipopt example
 add_executable(${PROJECT_NAME}_ipopt examples/trajopt_ipopt.cpp)
 target_include_directories(${PROJECT_NAME}_ipopt PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${PROJECT_NAME}_ipopt PRIVATE  ${PROJECT_NAME})
 
-# Add Augmented Lagrangian example
-add_executable(${PROJECT_NAME}_alm examples/trajopt_alm.cpp)
-target_include_directories(${PROJECT_NAME}_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${PROJECT_NAME}_alm PRIVATE ${PROJECT_NAME})
-
-find_package(TBB REQUIRED)
-
-# Add CEM example
-add_executable(${PROJECT_NAME}_cem examples/trajopt_cem.cpp)
-target_include_directories(${PROJECT_NAME}_cem PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${PROJECT_NAME}_cem PRIVATE
-    ${PROJECT_NAME}
-    TBB::tbb
-)
-target_include_directories(${PROJECT_NAME}_cem PUBLIC /usr/local/include)
-target_compile_options(${PROJECT_NAME}_cem PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
-
-# Add Towr example
-find_package(towr 1.2 REQUIRED)
-
-add_executable(${PROJECT_NAME}_cem_towr examples/trajopt_cem_towr.cpp)
-target_include_directories(${PROJECT_NAME}_cem_towr PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${PROJECT_NAME}_cem_towr PRIVATE
-    ${PROJECT_NAME}
-    TBB::tbb
-    towr::towr
-)
-target_include_directories(${PROJECT_NAME}_cem_towr PUBLIC /usr/local/include)
-target_compile_options(${PROJECT_NAME}_cem_towr PUBLIC -DUSE_TBB -DUSE_TBB_ONEAPI)
+# # Add Augmented Lagrangian example
+# add_executable(${PROJECT_NAME}_alm examples/trajopt_alm.cpp)
+# target_include_directories(${PROJECT_NAME}_alm PRIVATE ${PROJECT_SOURCE_DIR}/src)
+# target_link_libraries(${PROJECT_NAME}_alm PRIVATE ${PROJECT_NAME})

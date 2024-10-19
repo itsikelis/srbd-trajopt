@@ -6,7 +6,7 @@ project(trajopt VERSION 1.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
-option(USE_RobotDART "Use RobotDART for visualization" ON)
+option(USE_RobotDART "Use RobotDART for visualization" OFF)
 
 # Find Eigen
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)

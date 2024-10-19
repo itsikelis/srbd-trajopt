@@ -26,23 +26,11 @@ int main()
     std::srand(std::time(0));
 
     trajopt::SingleRigidBodyDynamicsModel model;
-    // trajopt::init_model_anymal(model);
-    trajopt::init_model_biped(model);
+    trajopt::init_model_anymal(model);
+    // trajopt::init_model_biped(model);
 
     trajopt::TerrainGrid terrain(20, 20, 1., -10, -10, 10, 10);
-    // terrain.SetZero();
-
-    trajopt::TerrainGrid::Grid grid;
-    grid.resize(20 * 20);
-    for (auto& g : grid) {
-        g = 0.;
-    }
-    for (size_t i = 0; i < 20; i++) {
-        for (size_t j = 0; j < 20; j++) {
-            grid.at(i * 20 + j) = -static_cast<double>(i) / 10.;
-        }
-    }
-    terrain.SetGrid(grid);
+    terrain.SetZero();
 
     // trajopt::TerrainGrid::Grid grid;
     //
@@ -67,12 +55,12 @@ int main()
     params.numSamples = 24;
 
     params.initBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.GetHeight(0., 0.));
-    params.targetBodyPos = Eigen::Vector3d(1.5, 0., 0.5 + terrain.GetHeight(1.5, 0.));
+    params.targetBodyPos = Eigen::Vector3d(0., 0., 0.5 + terrain.GetHeight(0., 0.));
 
     params.initBodyRot = Eigen::Vector3d::Zero();
     params.targetBodyRot = Eigen::Vector3d(0., 0., 0.);
 
-    params.numSteps = {3, 3, 3, 3};
+    params.numSteps = {1, 1, 1, 1};
 
     // params.maxForce = 2. * model.mass * std::abs(model.gravity[2]);
     params.maxForce = 1e6;

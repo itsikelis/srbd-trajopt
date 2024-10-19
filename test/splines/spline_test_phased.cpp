@@ -15,10 +15,10 @@ namespace rspl = trajopt::rspl;
 
 static constexpr size_t Dim = 3;
 static constexpr double eps = 1e-6;
-static constexpr size_t NumStancePhases = 3;
-static constexpr size_t NumSwingPhases = 2;
-static constexpr size_t NumKnotsPerSwing = 3;
-static constexpr rspl::Phase InitPhase = rspl::Phase::Stance;
+static constexpr size_t NumStancePhases = 2;
+static constexpr size_t NumSwingPhases = 3;
+static constexpr size_t NumKnotsPerSwing = 2;
+static constexpr rspl::Phase InitPhase = rspl::Phase::Swing;
 
 Eigen::VectorXd random_uniform_vector(size_t rows, double lower, double upper)
 {
@@ -40,9 +40,11 @@ bool test_duration(const _Traj& traj, const std::vector<double>& times)
 {
     // std::cout << "Trajectory Duration Test" << std::endl;
     // std::cout << "Times: " << std::endl;
-    // std::cout << times.transpose() << std::endl;
+    // for (auto item : times)
+    // std::cout << item << ", ";
+    // std::cout << std::endl;
     // std::cout << "Duration 1, Duration 2 " << std::endl;
-    // std::cout << times.sum() << ", " << traj.duration() << " (these should be approx. equal)" << std::endl;
+    // std::cout << times.sum() << traj.duration() << " (these should be approx. equal)" << std::endl;
     return (std::abs(std::accumulate(times.begin(), times.end(), 0.) - traj.duration()) < eps);
 }
 
@@ -62,6 +64,9 @@ template <typename _Traj>
 bool test_splines(const _Traj& traj)
 {
     bool flag = true;
+
+    if (traj.num_knot_points() < 2)
+        return flag;
 
     for (size_t deriv_order = 0; deriv_order < 2; ++deriv_order) {
 
@@ -140,8 +145,11 @@ bool test_jacobians(const _Traj& traj, const Eigen::VectorXd& knots, const std::
 
 int main()
 {
-    // Eigen::VectorXd knots((NumStancePhases * Dim) + (NumSwingPhases * NumKnotsPerSwing * 2 * Dim));
+    // Randomize knot points for tests
     Eigen::VectorXd knots = random_uniform_vector((NumStancePhases * Dim) + (NumSwingPhases * NumKnotsPerSwing * 2 * Dim), -10., 10.);
+    // for (size_t i = 0; i < knots.rows(); i++) {
+    //     std::cout << knots[i] << std::endl;
+    // }
 
     std::random_device rnd_device;
     std::mt19937 mersenne_engine{rnd_device()}; // Generates random integers
@@ -161,12 +169,12 @@ int main()
     // knots = random_uniform_vector(knots.rows(), -10., 10.);
     // std::cout << phase_times.rows() << std::endl;
 
-    std::vector<size_t> phase_knots;
+    std::vector<size_t> knots_per_swing;
     for (size_t i = 0; i < NumSwingPhases; ++i) {
-        phase_knots.push_back(NumKnotsPerSwing);
+        knots_per_swing.push_back(NumKnotsPerSwing);
     }
 
-    auto traj = rspl::PhasedTrajectory<Dim>(knots, phase_times, phase_knots, InitPhase);
+    auto traj = rspl::PhasedTrajectory<Dim>(knots, phase_times, knots_per_swing, InitPhase);
 
     // std::cout << "Phase Times: " << phase_times.transpose() << std::endl;
     // std::cout << "Duration: " << traj.total_duration() << std::endl;
@@ -197,7 +205,7 @@ int main()
         return -1;
     }
 
-    if (!test_jacobians(traj, knots, phase_times, phase_knots, InitPhase)) {
+    if (!test_jacobians(traj, knots, phase_times, knots_per_swing, InitPhase)) {
         std::cerr << "Test Failed: test_jacobians" << std::endl;
         return -1;
     }
