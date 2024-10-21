@@ -26,7 +26,14 @@ target_compile_options(${PROJECT_NAME} PUBLIC "-Wall;-Wextra;-O3;") # ;-Werror
 # Add contact ipopt example
 add_executable(${PROJECT_NAME}_ipopt examples/trajopt_ipopt.cpp)
 target_include_directories(${PROJECT_NAME}_ipopt PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${PROJECT_NAME}_ipopt PRIVATE  ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}_ipopt PRIVATE ${PROJECT_NAME})
+
+find_package(pinocchio REQUIRED)
+
+# Add contact ipopt example
+add_executable(full_body_to examples/trajopt_full_body.cpp)
+target_include_directories(full_body_to PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(full_body_to PRIVATE ${PROJECT_NAME} pinocchio::pinocchio)
 
 # # Add Augmented Lagrangian example
 # add_executable(${PROJECT_NAME}_alm examples/trajopt_alm.cpp)
